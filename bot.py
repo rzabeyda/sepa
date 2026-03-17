@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 load_dotenv()
 API_TOKEN = os.getenv("API_TOKEN")
 ADMIN_IDS = {7308147004, 1865333207}  # Ромик, Сергей
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")  # ngrok URL
 
 bot = Bot(token=API_TOKEN)
 dp  = Dispatcher(storage=MemoryStorage())
@@ -749,7 +750,7 @@ def format_booking(b, idx=None, username=None):
     countdown_line = f"\n{countdown}" if countdown else ""
     return f"{prefix}💆 {b['service']}\n⏱ Длительность: ~{dur_str}\n🕐 {b['time']} | {b['day']} {month_name}{countdown_line}\n👤 {b['name']} 📞 {b['phone']}{tg_line}{addr}".strip()
 
-def bottom_kb(is_admin=False, user_id=None):
+def bottom_kb(is_admin=False, user_id=None, webapp_url=None):
     has_booking = bool(user_id and get_user_bookings(user_id))
     broni_btn = KeyboardButton(text="✅ Брони") if has_booking else KeyboardButton(text="🗓 Брони")
     row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 Бонусы")]
@@ -1020,7 +1021,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         except Exception as _e: print(f"[WARN] {_e}")
     is_admin = message.from_user.id in ADMIN_IDS
     photo = FSInputFile(os.path.join(BASE_DIR, "images/sergey.jpg"))
-    await message.answer(".", reply_markup=bottom_kb(is_admin, user_id=message.from_user.id))
+    await message.answer(".", reply_markup=bottom_kb(is_admin, user_id=message.from_user.id, webapp_url=WEBAPP_URL))
     await message.answer_photo(
         photo=photo,
         caption=(

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Сергей — массажист</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#090909;--bg2:#111;--bg3:#181818;--accent:#c8a96e;--text:#e8e8e8;--muted:#666;--border:#1e1e1e;--r:14px;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;min-height:100vh;overscroll-behavior:none;}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:100;background:rgba(9,9,9,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;}
+  .nav-tabs{display:flex;flex:1;}
+  nav button{flex:1;padding:14px 2px;background:none;border:none;color:var(--muted);font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:color .2s;position:relative;}
+  nav button.active{color:var(--accent);}
+  nav button.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:2px;}
+  nav button:active{background:rgba(200,169,110,.07);}
+
+  /* LANG SELECTOR */
+  .lang-selector{padding:0 12px;position:relative;flex-shrink:0;}
+  .lang-current{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;padding:5px 8px;border-radius:8px;cursor:pointer;letter-spacing:.05em;}
+  .lang-current:active{border-color:var(--accent);color:var(--accent);}
+  .lang-dropdown{display:none;position:absolute;right:8px;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;min-width:60px;z-index:200;}
+  .lang-dropdown.open{display:block;}
+  .lang-option{display:block;width:100%;padding:9px 14px;background:none;border:none;color:var(--muted);font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:left;}
+  .lang-option:hover,.lang-option:active{background:var(--bg3);color:var(--accent);}
+
+  .page{display:none;padding:0 0 100px;animation:fadeIn .22s ease;}
+  .page.active{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  /* HERO */
+  .hero{position:relative;height:260px;overflow:hidden;}
+  .hero img{width:100%;height:100%;object-fit:cover;object-position:center 15%;}
+  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 25%,rgba(9,9,9,.88) 100%);}
+  .hero-text{position:absolute;bottom:20px;left:18px;right:18px;z-index:1;}
+  .hero-text h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;color:#fff;margin-bottom:4px;}
+  .hero-text p{color:rgba(255,255,255,.6);font-size:13px;font-weight:300;}
+
+  .section{padding:16px 16px 0;}
+  .section-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;color:#fff;margin-bottom:14px;}
+
+  /* CONTACT BTNS */
+  .contact-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+  .contact-btn{display:flex;align-items:center;gap:12px;padding:15px 16px;border-radius:var(--r);border:1px solid var(--border);text-decoration:none;cursor:pointer;transition:transform .12s,opacity .15s,border-color .2s;-webkit-tap-highlight-color:transparent;background:var(--bg2);}
+  .contact-btn:active{transform:scale(.97);opacity:.85;}
+  .contact-btn.tg{border-color:rgba(38,121,185,.3);background:rgba(38,121,185,.08);}
+  .contact-btn.phone{border-color:rgba(200,169,110,.25);background:rgba(200,169,110,.05);}
+  .contact-btn .ico{width:28px;height:28px;flex-shrink:0;object-fit:contain;}
+  .contact-btn .label{font-weight:600;font-size:14px;color:#fff;}
+
+  /* SERVICE CARDS */
+  .service-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;display:flex;align-items:stretch;cursor:pointer;transition:border-color .2s,transform .12s,background .15s;}
+  .service-card:active{transform:scale(.97);background:var(--bg3);}
+  .service-card.selected{border-color:var(--accent);}
+  .service-card img{width:80px;height:80px;object-fit:cover;flex-shrink:0;}
+  .service-card .info{padding:12px 14px;flex:1;display:flex;flex-direction:column;justify-content:center;}
+  .service-card .name{font-weight:600;color:#fff;margin-bottom:3px;font-size:14px;}
+  .service-card .meta{color:var(--muted);font-size:12px;}
+  .service-card .price{color:var(--accent);font-weight:700;font-size:15px;margin-top:4px;}
+
+  /* BTN */
+  .btn{width:100%;padding:16px;border:none;border-radius:var(--r);font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;letter-spacing:.03em;cursor:pointer;transition:transform .12s,opacity .15s,box-shadow .2s;-webkit-tap-highlight-color:transparent;}
+  .btn:active{transform:scale(.97);opacity:.88;}
+  .btn-primary{background:var(--accent);color:#0a0a0a;box-shadow:0 4px 18px rgba(200,169,110,.18);}
+  .btn-outline{background:none;border:1px solid var(--border);color:var(--muted);margin-top:10px;}
+  .btn-outline:active{border-color:var(--accent);color:var(--accent);}
+
+  /* RELAX DIVIDER */
+  .relax-divider{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .relax-divider::before,.relax-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+  .relax-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:#fff;white-space:nowrap;}
+
+  /* STEPS */
+  .step{display:none;padding:20px 16px 0;}
+  .step.active{display:block;}
+  .step-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:#fff;margin-bottom:16px;}
+
+  /* DUR */
+  .dur-row{display:flex;gap:10px;margin-bottom:20px;}
+  .dur-btn{flex:1;padding:14px 10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);border-radius:var(--r);font-family:'Manrope',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;text-align:center;-webkit-tap-highlight-color:transparent;}
+  .dur-btn:active{transform:scale(.95);}
+  .dur-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(200,169,110,.08);}
+
+  /* CAL */
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .cal-header span{font-size:15px;font-weight:600;color:#fff;}
+  .cal-nav{background:var(--bg2);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
+  .cal-nav:active{border-color:var(--accent);transform:scale(.9);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px;}
+  .cal-day-name{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;font-weight:600;}
+  .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13px;cursor:pointer;transition:all .15s;border:1px solid transparent;-webkit-tap-highlight-color:transparent;}
+  .cal-day.available:active{transform:scale(.85);background:var(--bg3);}
+  .cal-day.available{color:var(--text);}
+  .cal-day.selected{background:var(--accent);color:#000;font-weight:700;}
+  .cal-day.unavailable{color:#2a2a2a;pointer-events:none;}
+  .cal-day.today{border-color:var(--accent);}
+  .cal-day.empty{pointer-events:none;}
+
+  /* SLOTS */
+  .slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
+  .slot-btn{padding:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:var(--r);font-family:'Manrope',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;}
+  .slot-btn:active{transform:scale(.93);}
+  .slot-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(200,169,110,.08);}
+
+  /* FORM */
+  .form-group{margin-bottom:14px;}
+  .form-group label{display:block;color:var(--muted);font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;font-weight:600;}
+  .form-group input{width:100%;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
+  .form-group input:focus{border-color:var(--accent);}
+  .form-group input.error{border-color:#e05555;animation:shake .3s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+
+  /* SUMMARY */
+  .summary{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;}
+  .summary-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .summary-row:last-child{border-bottom:none;}
+  .summary-row .label{color:var(--muted);}
+  .summary-row .value{color:var(--text);font-weight:600;}
+
+  /* REVIEW */
+  .review-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;}
+  .review-stars{color:var(--accent);font-size:13px;margin-bottom:6px;}
+  .review-text{color:var(--text);font-size:13px;line-height:1.65;margin-bottom:8px;}
+  .review-meta{color:var(--muted);font-size:11px;font-weight:500;}
+
+  /* BOOKING CARD */
+  .booking-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;}
+  .booking-card .svc{font-weight:600;color:#fff;font-size:15px;margin-bottom:6px;}
+  .booking-card .detail{color:var(--muted);font-size:12px;margin-bottom:3px;}
+
+  /* SUCCESS */
+  .success-screen{text-align:center;padding:50px 20px;}
+  .success-icon{font-size:54px;margin-bottom:20px;animation:popIn .4s cubic-bezier(.175,.885,.32,1.275);}
+  @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+  .success-screen h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:400;color:#fff;margin-bottom:8px;}
+  .success-screen p{color:var(--muted);font-size:13px;line-height:1.7;}
+
+  .loader{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+  .empty-state{text-align:center;color:var(--muted);padding:50px 20px;font-size:13px;line-height:1.8;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-tabs">
+    <button class="active" onclick="showPage('home',this)">Главная</button>
+    <button onclick="showPage('book',this)" id="nav-book">Запись</button>
+    <button onclick="showPage('mybookings',this)" id="nav-my">Брони</button>
+    <button onclick="showPage('reviews',this)" id="nav-rev">Отзывы</button>
+  </div>
+  <div class="lang-selector">
+    <button class="lang-current" id="lang-current-btn" onclick="toggleLangMenu()">RU</button>
+    <div class="lang-dropdown" id="lang-dropdown">
+      <button class="lang-option" onclick="setLang('ru')">RU</button>
+      <button class="lang-option" onclick="setLang('et')">ET</button>
+      <button class="lang-option" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <img src="/images/sergey.jpg" onerror="this.src=''">
+    <div class="hero-text">
+      <h1>Сергей</h1>
+      <p data-t="subtitle">Массажист · Таллин</p>
+    </div>
+  </div>
+  <div class="section" style="margin-top:16px">
+    <div class="contact-btns">
+      <a class="contact-btn phone" href="tel:+37253730882">
+        <img class="ico" src="/images/trubka.png" onerror="this.src=''">
+        <div class="label" data-t="phone_btn">Позвонить мне</div>
+      </a>
+      <a class="contact-btn tg" href="https://t.me/Sepa17">
+        <img class="ico" src="/images/tg.png" onerror="this.src=''">
+        <div class="label" data-t="tg_btn">Написать мне</div>
+      </a>
+    </div>
+    <div class="relax-divider"><span class="relax-title">Relax</span></div>
+    <div id="home-services" class="loader">...</div>
+    <button class="btn btn-primary" style="margin-top:20px" onclick="goBook()" data-t="book_btn">Записаться на сеанс</button>
+  </div>
+</div>
+
+<!-- BOOK -->
+<div id="page-book" class="page">
+  <div class="step active" id="step0">
+    <p class="step-title" style="padding:20px 16px 0" data-t="choose_service">Выберите услугу</p>
+    <div style="padding:0 16px"><div id="book-services" class="loader">...</div></div>
+  </div>
+  <div class="step" id="step1">
+    <p class="step-title" data-t="duration">Длительность</p>
+    <div class="dur-row">
+      <button class="dur-btn selected" id="dur60" onclick="selectDur(60,30)">
+        <div style="font-size:18px;margin-bottom:4px;font-weight:700">60 <span data-t="min">мин</span></div>
+        <div style="color:var(--accent);font-weight:700">30€</div>
+      </button>
+      <button class="dur-btn" id="dur90" onclick="selectDur(90,40)">
+        <div style="font-size:18px;margin-bottom:4px;font-weight:700">90 <span data-t="min">мин</span></div>
+        <div style="color:var(--accent);font-weight:700">40€</div>
+      </button>
+    </div>
+    <button class="btn btn-primary" onclick="goStep(2)" data-t="choose_date">Выбрать дату →</button>
+    <button class="btn btn-outline" onclick="goStep(0)" data-t="back">← Назад</button>
+  </div>
+  <div class="step" id="step2">
+    <p class="step-title" data-t="date_time">Дата и время</p>
+    <div class="cal-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+      <span id="cal-month-label"></span>
+      <button class="cal-nav" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div id="slots-section" style="display:none">
+      <p style="font-family:'Playfair Display',serif;font-size:17px;color:#fff;margin-bottom:10px" data-t="time">Время</p>
+      <div class="slots-grid" id="slots-grid"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-step2-next" style="display:none" onclick="goStep(3)" data-t="next">Далее →</button>
+    <button class="btn btn-outline" onclick="goStep(1)" data-t="back">← Назад</button>
+  </div>
+  <div class="step" id="step3">
+    <p class="step-title" data-t="your_data">Ваши данные</p>
+    <div class="summary" id="booking-summary"></div>
+    <div class="form-group">
+      <label data-t="name_label">Имя</label>
+      <input type="text" id="inp-name" placeholder="Роман" autocomplete="name" autofocus>
+    </div>
+    <div class="form-group">
+      <label data-t="phone_label">Телефон</label>
+      <input type="tel" id="inp-phone" placeholder="+372 ..." autocomplete="tel">
+    </div>
+    <button class="btn btn-primary" id="btn-confirm" onclick="confirmBooking()" data-t="confirm">Подтвердить запись</button>
+    <button class="btn btn-outline" onclick="goStep(2)" data-t="back">← Назад</button>
+  </div>
+  <div class="step" id="step-success">
+    <div class="success-screen">
+      <div class="success-icon">✅</div>
+      <h2 data-t="success_title">Запись подтверждена!</h2>
+      <p data-t="success_sub">Сергей получит уведомление о вашем визите</p>
+      <div class="summary" id="success-detail" style="margin-top:20px;text-align:left"></div>
+      <p style="color:var(--muted);font-size:12px;margin-top:16px;line-height:1.9">
+        🏠 Linnamäe tee 24–44, Таллин<br>
+        📲 <a href="tel:+37253730882" style="color:var(--muted)">+372 53 730 882</a>
+      </p>
+      <button class="btn btn-outline" style="margin-top:20px" onclick="resetBook()" data-t="book_again">Записаться ещё</button>
+    </div>
+  </div>
+</div>
+
+<!-- MY BOOKINGS -->
+<div id="page-mybookings" class="page">
+  <div class="section" style="padding-top:20px">
+    <p class="section-title" data-t="my_bookings">Брони</p>
+    <div id="mybookings-list" class="loader">...</div>
+  </div>
+</div>
+
+<!-- REVIEWS -->
+<div id="page-reviews" class="page">
+  <div class="section" style="padding-top:20px">
+    <p class="section-title" data-t="reviews_title">Отзывы</p>
+    <div id="reviews-list" class="loader">...</div>
+  </div>
+</div>
+
+<script>
+const API='';
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();}
+const userId=tg?.initDataUnsafe?.user?.id||0;
+console.log('Telegram user_id:', userId);
+
+const T={
+  ru:{subtitle:'Массажист · Таллин',tg_btn:'Написать мне',
+    phone_btn:'Позвонить мне',book_btn:'Записаться на сеанс',
+    choose_service:'Выберите услугу',duration:'Длительность',min:'мин',
+    choose_date:'Выбрать дату →',back:'← Назад',date_time:'Дата и время',
+    time:'Время',next:'Далее →',your_data:'Ваши данные',name_label:'Имя',
+    phone_label:'Телефон',confirm:'Подтвердить запись',
+    success_title:'Запись подтверждена!',success_sub:'Сергей получит уведомление',
+    book_again:'Записаться ещё',my_bookings:'Брони',reviews_title:'Отзывы',
+    no_slots:'Нет свободных мест',no_bookings:'Броней пока нет',no_reviews:'Отзывов пока нет',
+    service:'Услуга',dur_label:'Длительность',date:'Дата',time_label:'Время',
+    months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
+    months_gen:['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'],
+    days:['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
+    open_in_tg:'Откройте через Telegram для просмотра броней'},
+  et:{subtitle:'Massöör · Tallinn',tg_btn:'Kirjuta mulle',
+    phone_btn:'Helista',book_btn:'Broneeri seanss',
+    choose_service:'Vali teenus',duration:'Kestus',min:'min',
+    choose_date:'Vali kuupäev →',back:'← Tagasi',date_time:'Kuupäev ja kellaaeg',
+    time:'Kellaaeg',next:'Edasi →',your_data:'Teie andmed',name_label:'Nimi',
+    phone_label:'Telefon',confirm:'Kinnita broneering',
+    success_title:'Broneering kinnitatud!',success_sub:'Sergei saab teatise',
+    book_again:'Broneeri uuesti',my_bookings:'Broneeringud',reviews_title:'Arvustused',
+    no_slots:'Vabu aegu pole',no_bookings:'Broneeringuid pole',no_reviews:'Arvustusi pole',
+    service:'Teenus',dur_label:'Kestus',date:'Kuupäev',time_label:'Kellaaeg',
+    months:['Jaanuar','Veebruar','Märts','Aprill','Mai','Juuni','Juuli','August','September','Oktoober','November','Detsember'],
+    months_gen:['jaanuaril','veebruaril','märtsil','aprillil','mail','juunil','juulil','augustil','septembril','oktoobril','novembril','detsembril'],
+    days:['E','T','K','N','R','L','P'],
+    open_in_tg:'Ava Telegrami kaudu broneeringute vaatamiseks'},
+  en:{subtitle:'Massage therapist · Tallinn',tg_btn:'Message me',
+    phone_btn:'Call me',book_btn:'Book a session',
+    choose_service:'Choose a service',duration:'Duration',min:'min',
+    choose_date:'Choose date →',back:'← Back',date_time:'Date & time',
+    time:'Time',next:'Next →',your_data:'Your details',name_label:'Name',
+    phone_label:'Phone',confirm:'Confirm booking',
+    success_title:'Booking confirmed!',success_sub:'Sergey will be notified',
+    book_again:'Book again',my_bookings:'Bookings',reviews_title:'Reviews',
+    no_slots:'No available slots',no_bookings:'No bookings yet',no_reviews:'No reviews yet',
+    service:'Service',dur_label:'Duration',date:'Date',time_label:'Time',
+    months:['January','February','March','April','May','June','July','August','September','October','November','December'],
+    months_gen:['January','February','March','April','May','June','July','August','September','October','November','December'],
+    days:['Mo','Tu','We','Th','Fr','Sa','Su'],
+    open_in_tg:'Open via Telegram to view bookings'}
+};
+let lang='ru';
+function t(k){return T[lang][k]||T.ru[k]||k;}
+
+function toggleLangMenu(){
+  const dd=document.getElementById('lang-dropdown');
+  dd.classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.lang-selector')) document.getElementById('lang-dropdown').classList.remove('open');
+});
+function setLang(l){
+  lang=l;
+  document.getElementById('lang-current-btn').textContent=l.toUpperCase();
+  document.getElementById('lang-dropdown').classList.remove('open');
+  document.querySelectorAll('[data-t]').forEach(el=>{
+    const k=el.getAttribute('data-t');
+    if(T[lang][k]) el.textContent=T[lang][k];
+  });
+  document.getElementById('nav-my').textContent=t('my_bookings');
+  document.getElementById('nav-rev').textContent=t('reviews_title');
+  if(calYear) renderCalendar();
+}
+
+// ── PAGES ──────────────────────────────────────────────────────────────────
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(name==='reviews') loadReviews();
+  if(name==='mybookings') loadMyBookings();
+  haptic('light');
+}
+function goBook(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-book').classList.add('active');
+  document.getElementById('nav-book').classList.add('active');
+  goStep(0);
+}
+function haptic(type){
+  try{tg?.HapticFeedback?.impactOccurred(type);}catch(e){}
+}
+
+// ── SERVICES ───────────────────────────────────────────────────────────────
+let services=[];
+async function loadServices(){
+  try{
+    const res=await fetch(API+'/api/services'); services=await res.json();
+    document.getElementById('home-services').innerHTML=services.map((s,i)=>`
+      <div class="service-card" onclick="bookService(${i})">
+        <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
+        <div class="info"><div class="name">${s.name}</div><div class="meta">${s.duration}</div><div class="price">${s.price}</div></div>
+      </div>`).join('');
+    document.getElementById('book-services').innerHTML=services.map((s,i)=>`
+      <div class="service-card" id="svc-${i}" onclick="selectService(${i})">
+        <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
+        <div class="info"><div class="name">${s.name}</div><div class="meta">${s.duration} · от ${s.price}</div></div>
+      </div>`).join('');
+  }catch(e){document.getElementById('home-services').innerHTML='<div class="empty-state">Нет соединения</div>';}
+}
+
+function bookService(i){goBook();setTimeout(()=>selectService(i),150);}
+let selService=null,selDurMin=60,selPrice=30;
+function selectService(i){
+  document.querySelectorAll('#book-services .service-card').forEach(c=>c.classList.remove('selected'));
+  const el=document.getElementById('svc-'+i); if(el) el.classList.add('selected');
+  selService=services[i]; haptic('medium');
+  setTimeout(()=>goStep(1),180);
+}
+function selectDur(min,price){
+  selDurMin=min; selPrice=price;
+  document.getElementById('dur60').classList.toggle('selected',min===60);
+  document.getElementById('dur90').classList.toggle('selected',min===90);
+  try{tg?.HapticFeedback?.selectionChanged();}catch(e){}
+}
+
+// ── STEPS ──────────────────────────────────────────────────────────────────
+let selYear,selMonth,selDay,selTime;
+function goStep(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById(n==='success'?'step-success':'step'+n).classList.add('active');
+  window.scrollTo(0,0);
+  if(n===2) initCalendar();
+  if(n===3){updateSummary(); setTimeout(()=>document.getElementById('inp-name').focus(),300);}
+}
+function resetBook(){selService=null;selDurMin=60;selPrice=30;selYear=selMonth=selDay=selTime=null;goStep(0);}
+
+// ── CALENDAR ───────────────────────────────────────────────────────────────
+let availDays=[],calYear,calMonth;
+function initCalendar(){const now=new Date();calYear=now.getFullYear();calMonth=now.getMonth()+1;selDay=null;selTime=null;document.getElementById('btn-step2-next').style.display='none';document.getElementById('slots-section').style.display='none';renderCalendar();}
+async function renderCalendar(){
+  if(!calYear) return;
+  document.getElementById('cal-month-label').textContent=t('months')[calMonth-1]+' '+calYear;
+  try{availDays=await fetch(`${API}/api/days?year=${calYear}&month=${calMonth}&dur_min=${selDurMin}`).then(r=>r.json());}catch(e){availDays=[];}
+  const grid=document.getElementById('cal-grid');
+  let html=t('days').map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  const offset=((new Date(calYear,calMonth-1,1).getDay()||7)-1);
+  for(let i=0;i<offset;i++) html+=`<div class="cal-day empty"></div>`;
+  const dim=new Date(calYear,calMonth,0).getDate(),today=new Date();
+  for(let d=1;d<=dim;d++){
+    const isT=d===today.getDate()&&calMonth===today.getMonth()+1&&calYear===today.getFullYear();
+    const av=availDays.includes(d),sel=d===selDay&&calMonth===(selMonth||0)&&calYear===(selYear||0);
+    let cls='cal-day'+(sel?' selected':av?' available'+(isT?' today':''):' unavailable');
+    html+=`<div class="${cls}"${av?` onclick="pickDay(${d})"`:''}>${d}</div>`;
+  }
+  grid.innerHTML=html;
+}
+async function pickDay(d){
+  selDay=d;selMonth=calMonth;selYear=calYear;selTime=null;
+  haptic('light');
+  document.getElementById('btn-step2-next').style.display='none';
+  renderCalendar();
+  try{
+    const slots=await fetch(`${API}/api/slots?year=${calYear}&month=${calMonth}&day=${d}&dur_min=${selDurMin}`).then(r=>r.json());
+    const sec=document.getElementById('slots-section'),grid=document.getElementById('slots-grid');
+    sec.style.display='block';
+    grid.innerHTML=slots.length?slots.map(s=>`<button class="slot-btn" onclick="pickSlot('${s}')">${s}</button>`).join('')
+      :`<p style="color:var(--muted);font-size:13px;grid-column:span 3">${t('no_slots')}</p>`;
+  }catch(e){}
+}
+function pickSlot(slot){
+  selTime=slot;
+  document.querySelectorAll('.slot-btn').forEach(b=>b.classList.toggle('selected',b.textContent===slot));
+  document.getElementById('btn-step2-next').style.display='block';
+  haptic('medium');
+}
+function changeMonth(dir){
+  calMonth+=dir; if(calMonth>12){calMonth=1;calYear++;} if(calMonth<1){calMonth=12;calYear--;}
+  selDay=null;selTime=null;
+  document.getElementById('slots-section').style.display='none';
+  document.getElementById('btn-step2-next').style.display='none';
+  renderCalendar();
+}
+
+// ── SUMMARY & CONFIRM ──────────────────────────────────────────────────────
+function updateSummary(){
+  document.getElementById('booking-summary').innerHTML=`
+    <div class="summary-row"><span class="label">${t('service')}</span><span class="value">${selService.name}</span></div>
+    <div class="summary-row"><span class="label">${t('dur_label')}</span><span class="value">${selDurMin} ${t('min')} · ${selPrice}€</span></div>
+    <div class="summary-row"><span class="label">${t('date')}</span><span class="value">${selDay} ${t('months_gen')[selMonth-1]}</span></div>
+    <div class="summary-row"><span class="label">${t('time_label')}</span><span class="value">${selTime}</span></div>`;
+}
+async function confirmBooking(){
+  const nameEl=document.getElementById('inp-name'),phoneEl=document.getElementById('inp-phone');
+  const name=nameEl.value.trim(),phone=phoneEl.value.trim();
+  [nameEl,phoneEl].forEach(el=>el.classList.remove('error'));
+  if(!name){
+    nameEl.classList.add('error'); nameEl.focus();
+    try{tg?.HapticFeedback?.notificationOccurred('error');}catch(e){}
+    return;
+  }
+  if(!phone){
+    phoneEl.classList.add('error'); phoneEl.focus();
+    try{tg?.HapticFeedback?.notificationOccurred('error');}catch(e){}
+    return;
+  }
+  const btn=document.getElementById('btn-confirm'); btn.disabled=true; btn.textContent='...';
+  try{
+    const res=await fetch(API+'/api/book',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user_id:userId,service:selService.name,year:selYear,month:selMonth,day:selDay,time:selTime,name,phone,dur_min:selDurMin})});
+    const data=await res.json();
+    if(data.ok){
+      document.getElementById('success-detail').innerHTML=`
+        <div class="summary-row"><span class="label">${t('service')}</span><span class="value">${selService.name}</span></div>
+        <div class="summary-row"><span class="label">${t('date')}</span><span class="value">${selDay} ${t('months_gen')[selMonth-1]}</span></div>
+        <div class="summary-row"><span class="label">${t('time_label')}</span><span class="value">${selTime}</span></div>
+        <div class="summary-row"><span class="label">${t('dur_label')}</span><span class="value">${selDurMin} ${t('min')} · ${selPrice}€</span></div>`;
+      try{tg?.HapticFeedback?.notificationOccurred('success');}catch(e){}
+      goStep('success');
+    } else {alert(data.error||'Ошибка');btn.disabled=false;btn.textContent=t('confirm');}
+  }catch(e){alert('Ошибка соединения');btn.disabled=false;btn.textContent=t('confirm');}
+}
+
+// ── REVIEWS ────────────────────────────────────────────────────────────────
+let reviewsLoaded=false;
+async function loadReviews(){
+  if(reviewsLoaded)return;
+  try{
+    const reviews=await fetch(API+'/api/reviews').then(r=>r.json()); reviewsLoaded=true;
+    const el=document.getElementById('reviews-list');
+    if(!reviews.length){el.innerHTML=`<div class="empty-state">${t('no_reviews')} 💆</div>`;return;}
+    el.innerHTML=reviews.map(r=>`
+      <div class="review-card">
+        <div class="review-stars">${'⭐'.repeat(r.rating)}</div>
+        ${r.text?`<div class="review-text">${r.text}</div>`:''}
+        <div class="review-meta">💆 ${r.service} · ${r.username} · ${r.date}</div>
+      </div>`).join('');
+  }catch(e){document.getElementById('reviews-list').innerHTML='<div class="empty-state">Нет соединения</div>';}
+}
+
+// ── MY BOOKINGS ────────────────────────────────────────────────────────────
+async function loadMyBookings(){
+  const el=document.getElementById('mybookings-list');
+  el.innerHTML='<div class="loader">...</div>';
+  if(!userId){
+    el.innerHTML=`<div class="empty-state">${t('open_in_tg')}</div>`;return;
+  }
+  try{
+    const bookings=await fetch(`${API}/api/user_bookings?user_id=${userId}`).then(r=>r.json());
+    if(!bookings.length){
+      el.innerHTML=`<div class="empty-state">${t('no_bookings')}<br><br>
+        <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="goBook()">${t('book_btn')}</button></div>`;return;
+    }
+    el.innerHTML=bookings.map(b=>`
+      <div class="booking-card">
+        <div class="svc">💆 ${b.service}</div>
+        <div class="detail">📅 ${b.day} ${t('months_gen')[b.month-1]} · 🕐 ${b.time}</div>
+        <div class="detail">👤 ${b.name} · 📞 ${b.phone}</div>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div class="empty-state">Нет соединения</div>';}
+}
+
+loadServices();
+</script>
+</body>
+</html>
