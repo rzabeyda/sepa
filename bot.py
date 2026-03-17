@@ -22,7 +22,9 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-API_TOKEN = "8703018871:AAHIQt05LuefBzFP_0aSAWft_t1VtbRb8a0"
+from dotenv import load_dotenv
+load_dotenv()
+API_TOKEN = os.getenv("API_TOKEN")
 ADMIN_IDS = {7308147004, 1865333207}  # Ромик, Сергей
 
 bot = Bot(token=API_TOKEN)
@@ -390,8 +392,8 @@ _DEFAULT_SERVICES = [
     ("Тайский массаж",         "30€", "60 мин", 60, "images/3.jpg", 3),
     ("Ароматический массаж",   "30€", "60 мин", 60, "images/4.jpg", 4),
     ("Сегментарный массаж",    "30€", "60 мин", 60, "images/5.jpg", 5),
-    ("Лимфодренажный массаж",  "30€", "60 мин", 60, "images/1.jpg", 6),
-    ("Лечебный массаж",        "30€", "60 мин", 60, "images/2.jpg", 7),
+    ("Лимфодренажный массаж",  "30€", "60 мин", 60, "images/6.jpg", 6),
+    ("Лечебный массаж",        "30€", "60 мин", 60, "images/7.jpg", 7),
 ]
 
 def _seed_services():
