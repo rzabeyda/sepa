@@ -750,7 +750,7 @@ def format_booking(b, idx=None, username=None):
     countdown_line = f"\n{countdown}" if countdown else ""
     return f"{prefix}💆 {b['service']}\n⏱ Длительность: ~{dur_str}\n🕐 {b['time']} | {b['day']} {month_name}{countdown_line}\n👤 {b['name']} 📞 {b['phone']}{tg_line}{addr}".strip()
 
-def bottom_kb(is_admin=False, user_id=None, webapp_url=None):
+def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     has_booking = bool(user_id and get_user_bookings(user_id))
     broni_btn = KeyboardButton(text="✅ Брони") if has_booking else KeyboardButton(text="🗓 Брони")
     row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 Бонусы")]
@@ -1026,8 +1026,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
         photo=photo,
         caption=(
             "*Сергей — мастер массажа в Таллине* 💆\n\n"
-            "✨ Более 7 лет опыта\n"
-            "⏱ Пн–Пт: 17:15–19:00 | Сб–Вс: 10:00–17:00\n\n"
+            "⏱ Пн–Пт: 17:15–19:00\n"
+            "⏱ Сб–Вс: 10:00–17:00\n\n"
             "Запишитесь онлайн — это займёт 1 минуту 👇"
         ),
         parse_mode="Markdown",
@@ -1124,7 +1124,7 @@ async def btn_referral(message: types.Message):
             f"2️⃣ Отправь другу\n"
             f"3️⃣ Когда он запишется и сходит на процедуру — оба получат промокод на скидку 30% на любую услугу\n"
             f"4️⃣ При записи введи промокод и получи скидку\n\n"
-            f"Твоя ссылка:\n`{ref_link}`",
+            f"Твоя ссылка:\n*{ref_link}*",
             parse_mode="Markdown")
         return
 
@@ -1152,7 +1152,7 @@ async def btn_referral(message: types.Message):
     text += f"━━━━━━━━━━━━━━━━━\n"
     text += f"🎁 *Как получить ещё?*\n"
     text += f"Поделись ссылкой с другом — когда он запишется, вы оба получите новый промокод -30%!\n\n"
-    text += f"Твоя ссылка:\n`{ref_link}`"
+    text += f"Твоя ссылка:\n*{ref_link}*"
     await message.answer(text, parse_mode="Markdown")
 
 @dp.callback_query(F.data == "show_portfolio")

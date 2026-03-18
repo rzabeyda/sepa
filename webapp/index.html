@@ -34,7 +34,7 @@
 
   /* HERO */
   .hero{position:relative;height:260px;overflow:hidden;}
-  .hero img{width:100%;height:100%;object-fit:cover;object-position:center 15%;}
+  .hero img{width:100%;height:100%;object-fit:contain;object-position:center center;background:#090909;}
   .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 25%,rgba(9,9,9,.88) 100%);}
   .hero-text{position:absolute;bottom:20px;left:18px;right:18px;z-index:1;}
   .hero-text h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;color:#fff;margin-bottom:4px;}
@@ -173,13 +173,13 @@
   </div>
   <div class="section" style="margin-top:16px">
     <div class="contact-btns">
-      <a class="contact-btn phone" href="tel:+37253730882">
-        <img class="ico" src="/images/trubka.png" onerror="this.src=''">
-        <div class="label" data-t="phone_btn">Позвонить мне</div>
-      </a>
       <a class="contact-btn tg" href="https://t.me/Sepa17">
         <img class="ico" src="/images/tg.png" onerror="this.src=''">
         <div class="label" data-t="tg_btn">Написать мне</div>
+      </a>
+      <a class="contact-btn phone" href="tel:+37253730882">
+        <img class="ico" src="/images/trubka.png" onerror="this.src=''">
+        <div class="label" data-t="phone_btn">Позвонить мне</div>
       </a>
     </div>
     <div class="relax-divider"><span class="relax-title">Relax</span></div>
@@ -270,7 +270,7 @@
 </div>
 
 <script>
-const API='';
+const API=window.location.origin;
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 const userId=tg?.initDataUnsafe?.user?.id||0;
