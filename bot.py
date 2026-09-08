@@ -388,13 +388,13 @@ def find_user_by_username(username):
 # ─────────────────────────────────────────────────────────────────────────────
 
 _DEFAULT_SERVICES = [
-    ("Классический массаж",    "30€", "60 мин", 60, "images/1.jpg", 1),
-    ("Спортивный массаж",      "30€", "60 мин", 60, "images/2.jpg", 2),
-    ("Тайский массаж",         "30€", "60 мин", 60, "images/3.jpg", 3),
-    ("Ароматический массаж",   "30€", "60 мин", 60, "images/4.jpg", 4),
-    ("Сегментарный массаж",    "30€", "60 мин", 60, "images/5.jpg", 5),
-    ("Лимфодренажный массаж",  "30€", "60 мин", 60, "images/6.jpg", 6),
-    ("Лечебный массаж",        "30€", "60 мин", 60, "images/7.jpg", 7),
+    ("Классический массаж",    "35€", "60 мин", 60, "images/1.jpg", 1),
+    ("Спортивный массаж",      "35€", "60 мин", 60, "images/2.jpg", 2),
+    ("Тайский массаж",         "35€", "60 мин", 60, "images/3.jpg", 3),
+    ("Ароматический массаж",   "35€", "60 мин", 60, "images/4.jpg", 4),
+    ("Сегментарный массаж",    "35€", "60 мин", 60, "images/5.jpg", 5),
+    ("Лимфодренажный массаж",  "35€", "60 мин", 60, "images/6.jpg", 6),
+    ("Лечебный массаж",        "35€", "60 мин", 60, "images/7.jpg", 7),
 ]
 
 def _seed_services():
@@ -1383,8 +1383,8 @@ async def service_choice(call: types.CallbackQuery, state: FSMContext):
     year=now_tallinn().year; await state.update_data(service=service_name,year=year)
     photo=FSInputFile(os.path.join(BASE_DIR, svc["img"]))
     dur_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⏱ 60 мин — 30€", callback_data="dur:60:30€")],
-        [InlineKeyboardButton(text="⏱ 90 мин — 40€", callback_data="dur:90:40€")],
+        [InlineKeyboardButton(text="⏱ 60 мин — 35€", callback_data="dur:60:35€")],
+        [InlineKeyboardButton(text="⏱ 90 мин — 50€", callback_data="dur:90:50€")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
     ])
     await call.message.answer_photo(photo=photo,
