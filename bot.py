@@ -684,33 +684,64 @@ def get_end_time(start_slot, dur_min):
     h,m = int(start_slot.split(":")[0]), int(start_slot.split(":")[1])
     total = h*60+m+dur_min; return f"{total//60:02d}:{total%60:02d}"
 
+# Расписание работы по дням недели (0=Пн ... 6=Вс)
+WORK_SCHEDULE = {
+    0: (17, 19),  # Понедельник
+    1: (17, 19),  # Вторник
+    2: (17, 19),  # Среда
+    3: (17, 19),  # Четверг
+    4: (17, 19),  # Пятница
+    5: (11, 18),  # Суббота
+    6: (11, 19),  # Воскресенье
+}
+
 def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     now = now_tallinn()
-    key = date_key(year,month,day)
+    key = date_key(year, month, day)
+
+    weekday = datetime(year, month, day).weekday()
+    if weekday not in WORK_SCHEDULE:
+        return []
+    start_hour, end_hour = WORK_SCHEDULE[weekday]
+
     manual_blocked = set()
     for slot in get_blocked_slots_for_date(key):
-        h,m = int(slot.split(":")[0]), int(slot.split(":")[1]); manual_blocked.add(h*60+m)
+        h, m = int(slot.split(":")[0]), int(slot.split(":")[1])
+        manual_blocked.add(h*60+m)
+
     booked = []
     for b in get_all_bookings():
-        if exclude_bid and b["id"]==exclude_bid: continue
-        if b["year"]!=year or b["month"]!=month or b["day"]!=day: continue
+        if exclude_bid and b["id"] == exclude_bid: continue
+        if b["year"] != year or b["month"] != month or b["day"] != day: continue
         svc = get_service(b["service"]); dur = duration_minutes(svc)
-        h,m = int(b["time"].split(":")[0]), int(b["time"].split(":")[1])
+        h, m = int(b["time"].split(":")[0]), int(b["time"].split(":")[1])
         booked.append((h*60+m, h*60+m+dur))
+
     def is_free(start, dur):
-        if start > 18*60: return False
-        for bs,be in booked:
+        if start + dur > end_hour*60: return False
+        for bs, be in booked:
             if start < be and start+dur > bs: return False
         if start in manual_blocked: return False
         return True
-    candidates = list(range(9*60, 18*60+1, 60))
-    for _,be in booked:
-        if be%60==30 and 9*60<=be<=18*60: candidates.append(be)
-    if year==now.year and month==now.month and day==now.day:
-        cutoff = now.hour*60+now.minute
-        candidates = [c for c in candidates if c > cutoff]
-    result = sorted(set(c for c in candidates if is_free(c, new_dur_min)))
-    return [f"{c//60:02d}:{c%60:02d}" for c in result]
+
+    candidates = list(range(start_hour*60, end_hour*60+1, 60))
+    for _, be in booked:
+        if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
+            candidates.append(be)
+
+    if year == now.year and month == now.month and day == now.day:
+        now_min = now.hour * 60 + now.minute
+    else:
+        now_min = 0
+
+    available = []
+    for start in sorted(set(candidates)):
+        if start < now_min:
+            continue
+        if is_free(start, new_dur_min):
+            h, m = start // 60, start % 60
+            available.append(f"{h:02d}:{m:02d}")
+    return available
 
 DAYS_RU = {0: "в понедельник", 1: "во вторник", 2: "в среду", 3: "в четверг", 4: "в пятницу", 5: "в субботу", 6: "в воскресенье"}
 
