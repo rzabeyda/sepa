@@ -309,10 +309,10 @@ cat << 'EOF' > webapp/index.html
     </header>
 
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('home')" data-i18n="tabHome">Главная</button>
-        <button class="tab" onclick="switchTab('booking')" data-i18n="tabBooking">Бронирование</button>
-        <button class="tab" onclick="switchTab('mybookings')" data-i18n="tabMyBookings">Брони</button>
-        <button class="tab" onclick="switchTab('reviews')" data-i18n="tabReviews">Отзывы</button>
+        <button class="tab active" onclick="switchTab('home', event)" data-i18n="tabHome">Главная</button>
+        <button class="tab" onclick="switchTab('booking', event)" data-i18n="tabBooking">Бронирование</button>
+        <button class="tab" onclick="switchTab('mybookings', event)" data-i18n="tabMyBookings">Брони</button>
+        <button class="tab" onclick="switchTab('reviews', event)" data-i18n="tabReviews">Отзывы</button>
     </div>
 
     <div class="container">
@@ -583,12 +583,14 @@ cat << 'EOF' > webapp/index.html
             }
         }
 
-        function switchTab(tabId) {
+        function switchTab(tabId, event) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             
             document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
         }
 
         function toggleService(header) {
@@ -627,4 +629,4 @@ cat << 'EOF' > webapp/index.html
 </body>
 </html>
 EOF
-git add webapp/index.html && git commit -m "update index"
+git add webapp/index.html && git commit -m "update index full code"
