@@ -1,9 +1,10 @@
+cat << 'EOF' > webapp/index.html
 <!DOCTYPE html>
 <html lang="et">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Сергей — массажист</title>
+<title>Sergei — massöör</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -167,7 +168,7 @@
   <div class="hero">
     <img src="/images/sergey.jpg" onerror="this.src=''">
     <div class="hero-text">
-      <h1>Сергей</h1>
+      <h1 data-t="name_title">Sergei</h1>
       <p data-t="subtitle">Massöör · Tallinn</p>
     </div>
   </div>
@@ -278,7 +279,7 @@ const userId=tg?.initDataUnsafe?.user?.id||0;
 const T={
   ru:{
     nav_home:'Главная',nav_book:'Запись',nav_my:'Брони',nav_rev:'Отзывы',
-    subtitle:'Массажист · Таллин',tg_btn:'Написать мне',
+    name_title:'Сергей',subtitle:'Массажист · Таллин',tg_btn:'Написать мне',
     phone_btn:'Позвонить мне',book_btn:'Записаться на сеанс',
     choose_service:'Выберите услугу',duration:'Длительность',min:'мин',
     choose_date:'Выбрать дату →',back:'← Назад',date_time:'Дата и время',
@@ -296,7 +297,7 @@ const T={
   },
   et:{
     nav_home:'Pealeht',nav_book:'Broneerimine',nav_my:'Broneeringud',nav_rev:'Arvustused',
-    subtitle:'Massöör · Tallinn',tg_btn:'Kirjuta mulle',
+    name_title:'Sergei',subtitle:'Massöör · Tallinn',tg_btn:'Kirjuta mulle',
     phone_btn:'Helista',book_btn:'Broneeri seanss',
     choose_service:'Vali teenus',duration:'Kestus',min:'min',
     choose_date:'Vali kuupäev →',back:'← Tagasi',date_time:'Kuupäev ja kellaaeg',
@@ -314,7 +315,7 @@ const T={
   },
   en:{
     nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',
-    subtitle:'Massage therapist · Tallinn',tg_btn:'Message me',
+    name_title:'Sergey',subtitle:'Massage therapist · Tallinn',tg_btn:'Message me',
     phone_btn:'Call me',book_btn:'Book a session',
     choose_service:'Choose a service',duration:'Duration',min:'min',
     choose_date:'Choose date →',back:'← Back',date_time:'Date & time',
@@ -379,13 +380,12 @@ let services=[];
 async function loadServices(){
   try{
     const res=await fetch(API+'/api/services'); const raw=await res.json();
-    // Фильтрация исключенных массажей
     services=raw.filter(s => {
       const name = s.name.toLowerCase();
       return !name.includes('сегментарный') && !name.includes('лечебный') && !name.includes('segmentaarne') && !name.includes('ravi');
     });
     renderServicesHTML();
-  }catch(e){document.getElementById('home-services').innerHTML='<div class="empty-state">Нет соединения</div>';}
+  }catch(e){document.getElementById('home-services').innerHTML='<div class="empty-state">Ühendus puudub</div>';}
 }
 
 function renderServicesHTML(){
@@ -527,7 +527,7 @@ async function loadReviews(){
         ${r.text?`<div class="review-text">${r.text}</div>`:''}
         <div class="review-meta">💆 ${r.service} · ${r.username} · ${r.date}</div>
       </div>`).join('');
-  }catch(e){document.getElementById('reviews-list').innerHTML='<div class="empty-state">Нет соединения</div>';}
+  }catch(e){document.getElementById('reviews-list').innerHTML='<div class="empty-state">Ühendus puudub</div>';}
 }
 
 // ── MY BOOKINGS ────────────────────────────────────────────────────────────
@@ -543,16 +543,17 @@ async function loadMyBookings(){
       el.innerHTML=`<div class="empty-state">${t('no_bookings')}<br><br>
         <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="goBook()">${t('book_btn')}</button></div>`;return;
     }
-    el.innerHTML=bookings.format=bookings.map(b=>`
+    el.innerHTML=bookings.map(b=>`
       <div class="booking-card">
         <div class="svc">💆 ${b.service}</div>
         <div class="detail">📅 ${b.day} ${t('months_gen')[b.month-1]} · 🕐 ${b.time}</div>
         <div class="detail">👤 ${b.name} · 📞 ${b.phone}</div>
       </div>`).join('');
-  }catch(e){el.innerHTML='<div class="empty-state">Нет соединения</div>';}
+  }catch(e){el.innerHTML='<div class="empty-state">Ühendus puudub</div>';}
 }
 
 loadServices();
 </script>
 </body>
 </html>
+EOF
