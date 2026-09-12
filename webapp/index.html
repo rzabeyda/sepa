@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="et">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -147,13 +147,13 @@
 
 <nav>
   <div class="nav-tabs">
-    <button class="active" onclick="showPage('home',this)">Главная</button>
-    <button onclick="showPage('book',this)" id="nav-book">Запись</button>
-    <button onclick="showPage('mybookings',this)" id="nav-my">Брони</button>
-    <button onclick="showPage('reviews',this)" id="nav-rev">Отзывы</button>
+    <button class="active" onclick="showPage('home',this)" data-t="nav_home">Pealeht</button>
+    <button onclick="showPage('book',this)" id="nav-book" data-t="nav_book">Broneerimine</button>
+    <button onclick="showPage('mybookings',this)" id="nav-my" data-t="nav_my">Broneeringud</button>
+    <button onclick="showPage('reviews',this)" id="nav-rev" data-t="nav_rev">Arvustused</button>
   </div>
   <div class="lang-selector">
-    <button class="lang-current" id="lang-current-btn" onclick="toggleLangMenu()">RU</button>
+    <button class="lang-current" id="lang-current-btn" onclick="toggleLangMenu()">ET</button>
     <div class="lang-dropdown" id="lang-dropdown">
       <button class="lang-option" onclick="setLang('ru')">RU</button>
       <button class="lang-option" onclick="setLang('et')">ET</button>
@@ -168,49 +168,49 @@
     <img src="/images/sergey.jpg" onerror="this.src=''">
     <div class="hero-text">
       <h1>Сергей</h1>
-      <p data-t="subtitle">Массажист · Таллин</p>
+      <p data-t="subtitle">Massöör · Tallinn</p>
     </div>
   </div>
   <div class="section" style="margin-top:16px">
     <div class="contact-btns">
       <a class="contact-btn tg" href="https://t.me/Sepa17">
         <img class="ico" src="/images/tg.png" onerror="this.src=''">
-        <div class="label" data-t="tg_btn">Написать мне</div>
+        <div class="label" data-t="tg_btn">Kirjuta mulle</div>
       </a>
       <a class="contact-btn phone" href="tel:+37253730882">
         <img class="ico" src="/images/trubka.png" onerror="this.src=''">
-        <div class="label" data-t="phone_btn">Позвонить мне</div>
+        <div class="label" data-t="phone_btn">Helista</div>
       </a>
     </div>
     <div class="relax-divider"><span class="relax-title">Relax</span></div>
     <div id="home-services" class="loader">...</div>
-    <button class="btn btn-primary" style="margin-top:20px" onclick="goBook()" data-t="book_btn">Записаться на сеанс</button>
+    <button class="btn btn-primary" style="margin-top:20px" onclick="goBook()" data-t="book_btn">Broneeri seanss</button>
   </div>
 </div>
 
 <!-- BOOK -->
 <div id="page-book" class="page">
   <div class="step active" id="step0">
-    <p class="step-title" style="padding:20px 16px 0" data-t="choose_service">Выберите услугу</p>
+    <p class="step-title" style="padding:20px 16px 0" data-t="choose_service">Vali teenus</p>
     <div style="padding:0 16px"><div id="book-services" class="loader">...</div></div>
   </div>
   <div class="step" id="step1">
-    <p class="step-title" data-t="duration">Длительность</p>
+    <p class="step-title" data-t="duration">Kestus</p>
     <div class="dur-row">
       <button class="dur-btn selected" id="dur60" onclick="selectDur(60,30)">
-        <div style="font-size:18px;margin-bottom:4px;font-weight:700">60 <span data-t="min">мин</span></div>
+        <div style="font-size:18px;margin-bottom:4px;font-weight:700">60 <span data-t="min">min</span></div>
         <div style="color:var(--accent);font-weight:700">35€</div>
       </button>
       <button class="dur-btn" id="dur90" onclick="selectDur(90,40)">
-        <div style="font-size:18px;margin-bottom:4px;font-weight:700">90 <span data-t="min">мин</span></div>
+        <div style="font-size:18px;margin-bottom:4px;font-weight:700">90 <span data-t="min">min</span></div>
         <div style="color:var(--accent);font-weight:700">50€</div>
       </button>
     </div>
-    <button class="btn btn-primary" onclick="goStep(2)" data-t="choose_date">Выбрать дату →</button>
-    <button class="btn btn-outline" onclick="goStep(0)" data-t="back">← Назад</button>
+    <button class="btn btn-primary" onclick="goStep(2)" data-t="choose_date">Vali kuupäev →</button>
+    <button class="btn btn-outline" onclick="goStep(0)" data-t="back">← Tagasi</button>
   </div>
   <div class="step" id="step2">
-    <p class="step-title" data-t="date_time">Дата и время</p>
+    <p class="step-title" data-t="date_time">Kuupäev ja kellaaeg</p>
     <div class="cal-header">
       <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
       <span id="cal-month-label"></span>
@@ -218,37 +218,37 @@
     </div>
     <div class="cal-grid" id="cal-grid"></div>
     <div id="slots-section" style="display:none">
-      <p style="font-family:'Playfair Display',serif;font-size:17px;color:#fff;margin-bottom:10px" data-t="time">Время</p>
+      <p style="font-family:'Playfair Display',serif;font-size:17px;color:#fff;margin-bottom:10px" data-t="time">Kellaaeg</p>
       <div class="slots-grid" id="slots-grid"></div>
     </div>
-    <button class="btn btn-primary" id="btn-step2-next" style="display:none" onclick="goStep(3)" data-t="next">Далее →</button>
-    <button class="btn btn-outline" onclick="goStep(1)" data-t="back">← Назад</button>
+    <button class="btn btn-primary" id="btn-step2-next" style="display:none" onclick="goStep(3)" data-t="next">Edasi →</button>
+    <button class="btn btn-outline" onclick="goStep(1)" data-t="back">← Tagasi</button>
   </div>
   <div class="step" id="step3">
-    <p class="step-title" data-t="your_data">Ваши данные</p>
+    <p class="step-title" data-t="your_data">Teie andmed</p>
     <div class="summary" id="booking-summary"></div>
     <div class="form-group">
-      <label data-t="name_label">Имя</label>
-      <input type="text" id="inp-name" placeholder="Роман" autocomplete="name" autofocus>
+      <label data-t="name_label">Nimi</label>
+      <input type="text" id="inp-name" placeholder="Roman" autocomplete="name" autofocus>
     </div>
     <div class="form-group">
-      <label data-t="phone_label">Телефон</label>
+      <label data-t="phone_label">Telefon</label>
       <input type="tel" id="inp-phone" placeholder="+372 ..." autocomplete="tel">
     </div>
-    <button class="btn btn-primary" id="btn-confirm" onclick="confirmBooking()" data-t="confirm">Подтвердить запись</button>
-    <button class="btn btn-outline" onclick="goStep(2)" data-t="back">← Назад</button>
+    <button class="btn btn-primary" id="btn-confirm" onclick="confirmBooking()" data-t="confirm">Kinnita broneering</button>
+    <button class="btn btn-outline" onclick="goStep(2)" data-t="back">← Tagasi</button>
   </div>
   <div class="step" id="step-success">
     <div class="success-screen">
       <div class="success-icon">✅</div>
-      <h2 data-t="success_title">Запись подтверждена!</h2>
-      <p data-t="success_sub">Сергей получит уведомление о вашем визите</p>
+      <h2 data-t="success_title">Broneering kinnitatud!</h2>
+      <p data-t="success_sub">Sergei saab teatise</p>
       <div class="summary" id="success-detail" style="margin-top:20px;text-align:left"></div>
       <p style="color:var(--muted);font-size:12px;margin-top:16px;line-height:1.9">
-        🏠 Linnamäe tee 24–44, Таллин<br>
+        🏠 Linnamäe tee 24–44, Tallinn<br>
         📲 <a href="tel:+37253730882" style="color:var(--muted)">+372 53 730 882</a>
       </p>
-      <button class="btn btn-outline" style="margin-top:20px" onclick="resetBook()" data-t="book_again">Записаться ещё</button>
+      <button class="btn btn-outline" style="margin-top:20px" onclick="resetBook()" data-t="book_again">Broneeri uuesti</button>
     </div>
   </div>
 </div>
@@ -256,7 +256,7 @@
 <!-- MY BOOKINGS -->
 <div id="page-mybookings" class="page">
   <div class="section" style="padding-top:20px">
-    <p class="section-title" data-t="my_bookings">Брони</p>
+    <p class="section-title" data-t="my_bookings">Broneeringud</p>
     <div id="mybookings-list" class="loader">...</div>
   </div>
 </div>
@@ -264,7 +264,7 @@
 <!-- REVIEWS -->
 <div id="page-reviews" class="page">
   <div class="section" style="padding-top:20px">
-    <p class="section-title" data-t="reviews_title">Отзывы</p>
+    <p class="section-title" data-t="reviews_title">Arvustused</p>
     <div id="reviews-list" class="loader">...</div>
   </div>
 </div>
@@ -274,10 +274,11 @@ const API=window.location.origin;
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();}
 const userId=tg?.initDataUnsafe?.user?.id||0;
-console.log('Telegram user_id:', userId);
 
 const T={
-  ru:{subtitle:'Массажист · Таллин',tg_btn:'Написать мне',
+  ru:{
+    nav_home:'Главная',nav_book:'Запись',nav_my:'Брони',nav_rev:'Отзывы',
+    subtitle:'Массажист · Таллин',tg_btn:'Написать мне',
     phone_btn:'Позвонить мне',book_btn:'Записаться на сеанс',
     choose_service:'Выберите услугу',duration:'Длительность',min:'мин',
     choose_date:'Выбрать дату →',back:'← Назад',date_time:'Дата и время',
@@ -290,8 +291,12 @@ const T={
     months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
     months_gen:['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'],
     days:['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
-    open_in_tg:'Откройте через Telegram для просмотра броней'},
-  et:{subtitle:'Massöör · Tallinn',tg_btn:'Kirjuta mulle',
+    open_in_tg:'Откройте через Telegram для просмотра броней',
+    from_price:'от'
+  },
+  et:{
+    nav_home:'Pealeht',nav_book:'Broneerimine',nav_my:'Broneeringud',nav_rev:'Arvustused',
+    subtitle:'Massöör · Tallinn',tg_btn:'Kirjuta mulle',
     phone_btn:'Helista',book_btn:'Broneeri seanss',
     choose_service:'Vali teenus',duration:'Kestus',min:'min',
     choose_date:'Vali kuupäev →',back:'← Tagasi',date_time:'Kuupäev ja kellaaeg',
@@ -304,8 +309,12 @@ const T={
     months:['Jaanuar','Veebruar','Märts','Aprill','Mai','Juuni','Juuli','August','September','Oktoober','November','Detsember'],
     months_gen:['jaanuaril','veebruaril','märtsil','aprillil','mail','juunil','juulil','augustil','septembril','oktoobril','novembril','detsembril'],
     days:['E','T','K','N','R','L','P'],
-    open_in_tg:'Ava Telegrami kaudu broneeringute vaatamiseks'},
-  en:{subtitle:'Massage therapist · Tallinn',tg_btn:'Message me',
+    open_in_tg:'Ava Telegrami kaudu broneeringute vaatamiseks',
+    from_price:'alates'
+  },
+  en:{
+    nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',
+    subtitle:'Massage therapist · Tallinn',tg_btn:'Message me',
     phone_btn:'Call me',book_btn:'Book a session',
     choose_service:'Choose a service',duration:'Duration',min:'min',
     choose_date:'Choose date →',back:'← Back',date_time:'Date & time',
@@ -318,10 +327,12 @@ const T={
     months:['January','February','March','April','May','June','July','August','September','October','November','December'],
     months_gen:['January','February','March','April','May','June','July','August','September','October','November','December'],
     days:['Mo','Tu','We','Th','Fr','Sa','Su'],
-    open_in_tg:'Open via Telegram to view bookings'}
+    open_in_tg:'Open via Telegram to view bookings',
+    from_price:'from'
+  }
 };
-let lang='ru';
-function t(k){return T[lang][k]||T.ru[k]||k;}
+let lang='et';
+function t(k){return T[lang][k]||T.et[k]||k;}
 
 function toggleLangMenu(){
   const dd=document.getElementById('lang-dropdown');
@@ -338,9 +349,8 @@ function setLang(l){
     const k=el.getAttribute('data-t');
     if(T[lang][k]) el.textContent=T[lang][k];
   });
-  document.getElementById('nav-my').textContent=t('my_bookings');
-  document.getElementById('nav-rev').textContent=t('reviews_title');
   if(calYear) renderCalendar();
+  if(services.length) renderServicesHTML();
 }
 
 // ── PAGES ──────────────────────────────────────────────────────────────────
@@ -368,18 +378,27 @@ function haptic(type){
 let services=[];
 async function loadServices(){
   try{
-    const res=await fetch(API+'/api/services'); services=await res.json();
-    document.getElementById('home-services').innerHTML=services.map((s,i)=>`
-      <div class="service-card" onclick="bookService(${i})">
-        <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
-        <div class="info"><div class="name">${s.name}</div><div class="meta">${s.duration}</div><div class="price">${s.price}</div></div>
-      </div>`).join('');
-    document.getElementById('book-services').innerHTML=services.map((s,i)=>`
-      <div class="service-card" id="svc-${i}" onclick="selectService(${i})">
-        <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
-        <div class="info"><div class="name">${s.name}</div><div class="meta">${s.duration} · от ${s.price}</div></div>
-      </div>`).join('');
+    const res=await fetch(API+'/api/services'); const raw=await res.json();
+    // Фильтрация исключенных массажей
+    services=raw.filter(s => {
+      const name = s.name.toLowerCase();
+      return !name.includes('сегментарный') && !name.includes('лечебный') && !name.includes('segmentaarne') && !name.includes('ravi');
+    });
+    renderServicesHTML();
   }catch(e){document.getElementById('home-services').innerHTML='<div class="empty-state">Нет соединения</div>';}
+}
+
+function renderServicesHTML(){
+  document.getElementById('home-services').innerHTML=services.map((s,i)=>`
+    <div class="service-card" onclick="bookService(${i})">
+      <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
+      <div class="info"><div class="name">${s.name}</div><div class="meta">${s.duration}</div><div class="price">${s.price}</div></div>
+    </div>`).join('');
+  document.getElementById('book-services').innerHTML=services.map((s,i)=>`
+    <div class="service-card" id="svc-${i}" onclick="selectService(${i})">
+      <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
+      <div class="info"><div class="name">${s.name}</div><div class="meta">${s.duration} · ${t('from_price')} ${s.price}</div></div>
+    </div>`).join('');
 }
 
 function bookService(i){goBook();setTimeout(()=>selectService(i),150);}
@@ -490,8 +509,8 @@ async function confirmBooking(){
         <div class="summary-row"><span class="label">${t('dur_label')}</span><span class="value">${selDurMin} ${t('min')} · ${selPrice}€</span></div>`;
       try{tg?.HapticFeedback?.notificationOccurred('success');}catch(e){}
       goStep('success');
-    } else {alert(data.error||'Ошибка');btn.disabled=false;btn.textContent=t('confirm');}
-  }catch(e){alert('Ошибка соединения');btn.disabled=false;btn.textContent=t('confirm');}
+    } else {alert(data.error||'Error');btn.disabled=false;btn.textContent=t('confirm');}
+  }catch(e){alert('Connection error');btn.disabled=false;btn.textContent=t('confirm');}
 }
 
 // ── REVIEWS ────────────────────────────────────────────────────────────────
@@ -524,7 +543,7 @@ async function loadMyBookings(){
       el.innerHTML=`<div class="empty-state">${t('no_bookings')}<br><br>
         <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="goBook()">${t('book_btn')}</button></div>`;return;
     }
-    el.innerHTML=bookings.map(b=>`
+    el.innerHTML=bookings.format=bookings.map(b=>`
       <div class="booking-card">
         <div class="svc">💆 ${b.service}</div>
         <div class="detail">📅 ${b.day} ${t('months_gen')[b.month-1]} · 🕐 ${b.time}</div>
