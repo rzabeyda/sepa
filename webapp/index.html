@@ -628,5 +628,7 @@ rm -f webapp/index.html && cat << 'EOF' > webapp/index.html
 </html>
 EOF
 
-pkill -f "uvicorn api:app --host 0.0.0.0 --port 8007"
+git add webapp/index.html
+git commit -m "update webapp with full estonian translation and service descriptions"
+pkill -f "uvicorn api:app"
 nohup uvicorn api:app --host 0.0.0.0 --port 8007 > api.log 2>&1 &
