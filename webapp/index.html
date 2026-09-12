@@ -303,16 +303,16 @@ cat << 'EOF' > webapp/index.html
     <header>
         <div class="profile-info">
             <h1>Sergei</h1>
-            <p>Massöör · Tallinn</p>
+            <p id="subRole">Massöör · Tallinn</p>
         </div>
         <button class="lang-switcher" id="langToggle" onclick="toggleLanguage()">RU</button>
     </header>
 
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('home', event)" data-i18n="tabHome">Главная</button>
-        <button class="tab" onclick="switchTab('booking', event)" data-i18n="tabBooking">Бронирование</button>
-        <button class="tab" onclick="switchTab('mybookings', event)" data-i18n="tabMyBookings">Брони</button>
-        <button class="tab" onclick="switchTab('reviews', event)" data-i18n="tabReviews">Отзывы</button>
+        <button class="tab active" onclick="switchTab('home', event)" data-i18n="tabHome">Pealeht</button>
+        <button class="tab" onclick="switchTab('booking', event)" data-i18n="tabBooking">Broneerimine</button>
+        <button class="tab" onclick="switchTab('mybookings', event)" data-i18n="tabMyBookings">Broneeringud</button>
+        <button class="tab" onclick="switchTab('reviews', event)" data-i18n="tabReviews">Arvustused</button>
     </div>
 
     <div class="container">
@@ -322,110 +322,110 @@ cat << 'EOF' > webapp/index.html
                 <img src="images/sergey.jpg" alt="Sergei" class="bio-avatar">
                 <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 8px;">Sergei</h2>
                 <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; max-width: 400px; margin: 0 auto;" data-i18n="bioText">
-                    Профессиональный массажист с многолетним опытом в Таллине. Помогу вам снять напряжение, расслабиться и восстановить энергию.
+                    Professionaalne massöör mitmeaastase kogemusega Tallinnas. Aitan teil vabaneda pingetest, lõõgastuda ja taastada energiavarud.
                 </p>
                 <div class="action-buttons">
                     <a href="https://t.me/sergeimassage" class="btn-action">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.02-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.35-.49.96-.75 3.78-1.65 6.31-2.74 7.58-3.27 3.61-1.51 4.36-1.77 4.85-1.78.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.13-.04.27z"/></svg>
-                        <span data-i18n="btnWrite">Написать мне</span>
+                        <span data-i18n="btnWrite">Kirjuta mulle</span>
                     </a>
                     <a href="tel:+37255555555" class="btn-action">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                        <span data-i18n="btnCall">Позвонить</span>
+                        <span data-i18n="btnCall">Helista</span>
                     </a>
                 </div>
             </div>
 
-            <div class="category-title" data-i18n="catRelax">Relax & Здоровье</div>
+            <div class="category-title" data-i18n="catRelax">Relax & Tervis</div>
             
             <div class="service-card">
                 <div class="service-header" onclick="toggleService(this)">
-                    <span class="service-title" data-i18n="serv1Title">Классический массаж</span>
+                    <span class="service-title" data-i18n="serv1Title">Klassikaline massaaž</span>
                     <div class="service-meta">
                         <span class="service-price">40 €</span>
                         <span class="expand-arrow">▼</span>
                     </div>
                 </div>
                 <div class="service-details" data-i18n="serv1Desc">
-                    Снятие мышечного напряжения и усталости. Глубокое расслабление и снятие стресса. Повышение тонуса всего тела. Длительность 60 мин.
+                    Klassikaline kogu keha massaaž. Lihaspingete ja väsimuse leevendamine. Sügav lõõgastus ja stressi maandamine. Kogu keha toonuse tõstmine. Kestus 60 min.
                 </div>
             </div>
 
             <div class="service-card">
                 <div class="service-header" onclick="toggleService(this)">
-                    <span class="service-title" data-i18n="serv2Title">Аромамассаж</span>
+                    <span class="service-title" data-i18n="serv2Title">Aroomimassaaž</span>
                     <div class="service-meta">
                         <span class="service-price">45 €</span>
                         <span class="expand-arrow">▼</span>
                     </div>
                 </div>
                 <div class="service-details" data-i18n="serv2Desc">
-                    Часовой отдых и погружение в мир полного покоя. Мягкие массажные техники в сочетании с теплыми натуральными эфирными маслами снимают мышечное напряжение, успокаивают нервную систему и способствуют глубокому сну. Длительность 60 мин.
+                    Tunnine puhkus ja sukeldumine täieliku rahu maailma. Pehmed massaažitehnikad soojade naturaalsete eeterlike õlidega vabastavad pingetest, rahustavad närvisüsteemi ja soodustavad sügavat und. Kestus 60 min.
                 </div>
             </div>
 
             <div class="service-card">
                 <div class="service-header" onclick="toggleService(this)">
-                    <span class="service-title" data-i18n="serv5Title">Лимфатический массаж</span>
+                    <span class="service-title" data-i18n="serv5Title">Lümfimassaaž</span>
                     <div class="service-meta">
                         <span class="service-price">45 €</span>
                         <span class="expand-arrow">▼</span>
                     </div>
                 </div>
                 <div class="service-details" data-i18n="serv5Desc">
-                    Мягкая и деликатная мануальная техника, направленная на стимуляцию лимфообращения и удаления избытка жидкости и токсинов из организма. Помогает уменьшить отёки и улучшить контуры тела. Длительность 60 мин.
+                    Pehme ja õrn manuaalne tehnik, mis on suunatud lümfiringe stimuleerimisele ja liigse vedeliku ning toksiinide eemaldamisele. Aitab vähendada turseid, parandada keha kontuure ja uduse enesetunde vastu. Kestus 60 min.
                 </div>
             </div>
 
-            <div class="category-title" data-i18n="catSport">Спорт & Спецпредложения</div>
+            <div class="category-title" data-i18n="catSport">Sport & Erihoolitsused</div>
 
             <div class="service-card">
                 <div class="service-header" onclick="toggleService(this)">
-                    <span class="service-title" data-i18n="serv3Title">Спортивный массаж</span>
+                    <span class="service-title" data-i18n="serv3Title">Spordimassaaž</span>
                     <div class="service-meta">
                         <span class="service-price">50 €</span>
                         <span class="expand-arrow">▼</span>
                     </div>
                 </div>
                 <div class="service-details" data-i18n="serv3Desc">
-                    Спортивный массаж поможет вам вернуться в строй! Интенсивные техники глубокого массажа снимают мышечные спазмы, улучшают эластичность тканей и предотвращают травмы. Идеально до и после тренировок. Длительность 60 мин.
+                    Spordimassaaž aitab teil vormi tagasi tulla! Intensiivsed süvamassaaži tehnikad vabastavad lihasspasmidest, parandavad kudede elastsust ja ennetavad vigastusi. Ideaalne nii enne kui ka pärast treeningut. Kestus 60 min.
                 </div>
             </div>
 
             <div class="service-card">
                 <div class="service-header" onclick="toggleService(this)">
-                    <span class="service-title" data-i18n="serv4Title">Тайский массаж (на ковриках)</span>
+                    <span class="service-title" data-i18n="serv4Title">Tai massaaž (matil)</span>
                     <div class="service-meta">
                         <span class="service-price">50 €</span>
                         <span class="expand-arrow">▼</span>
                     </div>
                 </div>
                 <div class="service-details" data-i18n="serv4Desc">
-                    Тайский массаж на ковриках (йога-массаж) — это глубоко действующая терапия, сочетающая акупрессуру и скручивающие движения на растяжку («йога для ленивых»). Сеанс проходит на татами в свободной одежде, прорабатывается все тело от головы до пят. Длительность 60 мин.
+                    Matil tehtav sügavalt toimiv teraapia (tuntud kui jooga-massaaž), mis ühendab akupressuuri ja venitused ("jooga laiskadele"). Seanss toimub tatamil mugavates riietes, kus terapeut töötleb läbi kogu keha pealaest jalatallani. Kestus 60 min.
                 </div>
             </div>
         </div>
 
         <!-- БРОНИРОВАНИЕ -->
         <div id="booking" class="section">
-            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;" data-i18n="bookTitle">Забронировать сеанс</h2>
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;" data-i18n="bookTitle">Broneeri aeg</h2>
             <form onsubmit="handleBooking(event)">
                 <div class="form-group">
-                    <label data-i18n="labelService">Выберите услугу</label>
+                    <label data-i18n="labelService">Vali teenus</label>
                     <select class="form-control" id="bookingService">
-                        <option value="Классический массаж - 40€">Классический массаж (60 мин) — 40 €</option>
-                        <option value="Аромамассаж - 45€">Аромамассаж (60 мин) — 45 €</option>
-                        <option value="Лимфатический массаж - 45€">Лимфатический массаж (60 мин) — 45 €</option>
-                        <option value="Спортивный массаж - 50€">Спортивный массаж (60 мин) — 50 €</option>
-                        <option value="Тайский массаж - 50€">Тайский массаж (60 мин) — 50 €</option>
+                        <option value="Klassikaline massaaž - 40€">Klassikaline massaaž (60 min) — 40 €</option>
+                        <option value="Aroomimassaaž - 45€">Aroomimassaaž (60 min) — 45 €</option>
+                        <option value="Lümfimassaaž - 45€">Lümfimassaaž (60 min) — 45 €</option>
+                        <option value="Spordimassaaž - 50€">Spordimassaaž (60 min) — 50 €</option>
+                        <option value="Tai massaaž - 50€">Tai massaaž (60 min) — 50 €</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="labelDate">Дата</label>
+                    <label data-i18n="labelDate">Kuupäev</label>
                     <input type="date" class="form-control" id="bookingDate" required>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="labelTime">Время</label>
+                    <label data-i18n="labelTime">Aeg</label>
                     <select class="form-control" id="bookingTime">
                         <option>10:00</option>
                         <option>12:00</option>
@@ -435,28 +435,28 @@ cat << 'EOF' > webapp/index.html
                     </select>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="labelName">Ваше имя</label>
-                    <input type="text" class="form-control" id="clientName" placeholder="Имя" required>
+                    <label data-i18n="labelName">Teie nimi</label>
+                    <input type="text" class="form-control" id="clientName" placeholder="Nimi" required>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="labelPhone">Телефон / Telegram</label>
+                    <label data-i18n="labelPhone">Telefon / Telegram</label>
                     <input type="text" class="form-control" id="clientContact" placeholder="+372 ..." required>
                 </div>
-                <button type="submit" class="btn-primary" data-i18n="btnBookConfirm">Подтвердить бронирование</button>
+                <button type="submit" class="btn-primary" data-i18n="btnBookConfirm">Kinnita broneering</button>
             </form>
         </div>
 
         <!-- БРОНИ -->
         <div id="mybookings" class="section">
-            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;" data-i18n="myBookingsTitle">Ваши бронирования</h2>
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;" data-i18n="myBookingsTitle">Teie broneeringud</h2>
             <div id="bookingsList" style="color: var(--text-secondary); font-size: 14px;" data-i18n="noBookings">
-                У вас пока нет активных бронирований.
+                Teil ei ole veel aktiivseid broneeringuid.
             </div>
         </div>
 
         <!-- ОТЗЫВЫ -->
         <div id="reviews" class="section">
-            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;" data-i18n="reviewsTitle">Отзывы клиентов</h2>
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px;" data-i18n="reviewsTitle">Klientide arvustused</h2>
             
             <div class="review-card">
                 <div class="review-header">
@@ -464,7 +464,7 @@ cat << 'EOF' > webapp/index.html
                     <span class="review-date">10.09.2026</span>
                 </div>
                 <div class="review-text" data-i18n="rev1">
-                    Очень профессиональный массажист! После сеанса полное ощущение легкости в спине. Обязательно рекомендую всем.
+                    Väga professionaalne massöör! Pärast seanssi on seljas täielik kergustunne. Soovitan kindlasti kõigile.
                 </div>
             </div>
 
@@ -474,7 +474,7 @@ cat << 'EOF' > webapp/index.html
                     <span class="review-date">05.09.2026</span>
                 </div>
                 <div class="review-text" data-i18n="rev2">
-                    Прекрасная расслабляющая атмосфера и золотые руки. Обязательно приду еще!
+                    Suurepärane lõõgastav atmosfäär ja kuldsed käed. Tulen kindlasti veel!
                 </div>
             </div>
         </div>
@@ -482,40 +482,8 @@ cat << 'EOF' > webapp/index.html
 
     <script>
         const translations = {
-            ru: {
-                tabHome: "Главная",
-                tabBooking: "Бронирование",
-                tabMyBookings: "Брони",
-                tabReviews: "Отзывы",
-                bioText: "Профессиональный массажист с многолетним опытом в Таллине. Помогу вам снять напряжение, расслабиться и восстановить энергию.",
-                btnWrite: "Написать мне",
-                btnCall: "Позвонить",
-                catRelax: "Relax & Здоровье",
-                serv1Title: "Классический массаж",
-                serv1Desc: "Снятие мышечного напряжения и усталости. Глубокое расслабление и снятие стресса. Повышение тонуса всего тела. Длительность 60 мин.",
-                serv2Title: "Аромамассаж",
-                serv2Desc: "Часовой отдых и погружение в мир полного покоя. Мягкие массажные техники в сочетании с теплыми натуральными эфирными маслами снимают мышечное напряжение, успокаивают нервную систему и способствуют глубокому сну. Длительность 60 мин.",
-                serv5Title: "Лимфатический массаж",
-                serv5Desc: "Мягкая и деликатная мануальная техника, направленная на стимуляцию лимфообращения и удаления избытка жидкости и токсинов из организма. Помогает уменьшить отёки и улучшить контуры тела. Длительность 60 мин.",
-                catSport: "Спорт & Спецпредложения",
-                serv3Title: "Спортивный массаж",
-                serv3Desc: "Спортивный массаж поможет вам вернуться в строй! Интенсивные техники глубокого массажа снимают мышечные спазмы, улучшают эластичность тканей и предотвращают травмы. Идеально до и после тренировок. Длительность 60 мин.",
-                serv4Title: "Тайский массаж (на ковриках)",
-                serv4Desc: "Тайский массаж на ковриках (йога-массаж) — это глубоко действующая терапия, сочетающая акупрессуру и скручивающие движения на растяжку («йога для ленивых»). Сеанс проходит на татами в свободной одежде, прорабатывается все тело от головы до пят. Длительность 60 мин.",
-                bookTitle: "Забронировать сеанс",
-                labelService: "Выберите услугу",
-                labelDate: "Дата",
-                labelTime: "Время",
-                labelName: "Ваше имя",
-                labelPhone: "Телефон / Telegram",
-                btnBookConfirm: "Подтвердить бронирование",
-                myBookingsTitle: "Ваши бронирования",
-                noBookings: "У вас пока нет активных бронирований.",
-                reviewsTitle: "Отзывы клиентов",
-                rev1: "Очень профессиональный массажист! После сеанса полное ощущение легкости в спине. Обязательно рекомендую всем.",
-                rev2: "Прекрасная расслабляющая атмосфера и золотые руки. Обязательно приду еще!"
-            },
             et: {
+                subRole: "Massöör · Tallinn",
                 tabHome: "Pealeht",
                 tabBooking: "Broneerimine",
                 tabMyBookings: "Broneeringud",
@@ -547,15 +515,53 @@ cat << 'EOF' > webapp/index.html
                 reviewsTitle: "Klientide arvustused",
                 rev1: "Väga professionaalne massöör! Pärast seanssi on seljas täielik kergustunne. Soovitan kindlasti kõigile.",
                 rev2: "Suurepärane lõõgastav atmosfäär ja kuldsed käed. Tulen kindlasti veel!"
+            },
+            ru: {
+                subRole: "Массажист · Таллин",
+                tabHome: "Главная",
+                tabBooking: "Бронирование",
+                tabMyBookings: "Брони",
+                tabReviews: "Отзывы",
+                bioText: "Профессиональный массажист с многолетним опытом в Таллине. Помогу вам снять напряжение, расслабиться и восстановить энергию.",
+                btnWrite: "Написать мне",
+                btnCall: "Позвонить",
+                catRelax: "Relax & Здоровье",
+                serv1Title: "Классический массаж",
+                serv1Desc: "Снятие мышечного напряжения и усталости. Глубокое расслабление и снятие стресса. Повышение тонуса всего тела. Длительность 60 мин.",
+                serv2Title: "Аромамассаж",
+                serv2Desc: "Часовой отдых и погружение в мир полного покоя. Мягкие массажные техники в сочетании с теплыми натуральными эфирными маслами снимают мышечное напряжение, успокаивают нервную систему и способствуют глубокому сну. Длительность 60 мин.",
+                serv5Title: "Лимфатический массаж",
+                serv5Desc: "Мягкая и деликатная мануальная техника, направленная на стимуляцию лимфообращения и удаления избытка жидкости и токсинов из организма. Помогает уменьшить отёки и улучшить контуры тела. Длительность 60 мин.",
+                catSport: "Спорт & Спецпредложения",
+                serv3Title: "Спортивный массаж",
+                serv3Desc: "Спортивный массаж поможет вам вернуться в строй! Интенсивные техники глубокого массажа снимают мышечные спазмы, улучшают эластичность тканей и предотвращают травмы. Идеально до и после тренировок. Длительность 60 мин.",
+                serv4Title: "Тайский массаж (на ковриках)",
+                serv4Desc: "Тайский массаж на ковриках (йога-массаж) — это глубоко действующая терапия, сочетающая акупрессуру и скручивающие движения на растяжку («йога для ленивых»). Сеанс проходит на татами в свободной одежде, прорабатывается все тело от головы до пят. Длительность 60 мин.",
+                bookTitle: "Забронировать сеанс",
+                labelService: "Выберите услугу",
+                labelDate: "Дата",
+                labelTime: "Время",
+                labelName: "Ваше имя",
+                labelPhone: "Телефон / Telegram",
+                btnBookConfirm: "Подтвердить бронирование",
+                myBookingsTitle: "Ваши бронирования",
+                noBookings: "У вас пока нет активных бронирований.",
+                reviewsTitle: "Отзывы клиентов",
+                rev1: "Очень профессиональный массажист! После сеанса полное ощущение легкости в спине. Обязательно рекомендую всем.",
+                rev2: "Прекрасная расслабляющая атмосфера и золотые руки. Обязательно приду еще!"
             }
         };
 
-        let currentLang = 'ru';
+        // Устанавливаем эстонский язык по умолчанию при загрузке страницы
+        let currentLang = 'et';
 
         function toggleLanguage() {
-            currentLang = currentLang === 'ru' ? 'et' : 'ru';
-            document.getElementById('langToggle').innerText = currentLang.toUpperCase();
+            currentLang = currentLang === 'et' ? 'ru' : 'et';
+            // На кнопке переключения показываем язык, на который МОЖНО переключиться
+            document.getElementById('langToggle').innerText = currentLang === 'et' ? 'RU' : 'ET';
             
+            document.getElementById('subRole').innerText = translations[currentLang].subRole;
+
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (translations[currentLang][key]) {
@@ -629,4 +635,4 @@ cat << 'EOF' > webapp/index.html
 </body>
 </html>
 EOF
-git add webapp/index.html && git commit -m "update index full code"
+git add webapp/index.html && git commit -m "fix estonian default language and fix switcher" && git push origin main
