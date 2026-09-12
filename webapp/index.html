@@ -1,4 +1,4 @@
-cd /root/sepa && cat << 'EOF' > webapp/index.html
+cat << 'EOF' > webapp/index.html
 <!DOCTYPE html>
 <html lang="et">
 <head>
@@ -627,8 +627,4 @@ cd /root/sepa && cat << 'EOF' > webapp/index.html
 </body>
 </html>
 EOF
-
-git add webapp/index.html
-git commit -m "force update estonian layout"
-systemctl restart sepa_bot
-systemctl status sepa_bot --no-pager
+git add webapp/index.html && git commit -m "update index"
