@@ -66,9 +66,15 @@ WORK_SCHEDULE = {
     2: (17, 19),  # Среда
     3: (17, 19),  # Четверг
     4: (17, 19),  # Пятница
-    5: (11, 18),  # Суббота
-    6: (11, 19),  # Воскресенье
+    5: (12, 18),  # Суббота — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
+    6: (12, 18),  # Воскресенье — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
 }
+
+# По субботам и воскресеньям запись возможна только на эти 4 времени — никакого
+# почасового диапазона, как в будни. Совпадает 1-в-1 с bot.py.
+WEEKEND_FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
+_WEEKEND_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in WEEKEND_FIXED_SLOTS)
+_WEEKEND_CLOSE_MIN = _WEEKEND_SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
 
 REST_MINUTES = 30  # отдых Сергею после каждого массажа — то же значение, что в bot.py
 
@@ -78,6 +84,7 @@ def get_slots(year, month, day, dur_min):
     if weekday not in WORK_SCHEDULE:
         return []
     start_hour, end_hour = WORK_SCHEDULE[weekday]
+    is_weekend_fixed = weekday in (5, 6)
     con = db()
     if con.execute("SELECT date FROM schedule WHERE type='day' AND date=?", (key,)).fetchone():
         con.close(); return []
@@ -92,14 +99,18 @@ def get_slots(year, month, day, dur_min):
         h,m = int(btime.split(":")[0]), int(btime.split(":")[1])
         booked.append((h*60+m, h*60+m+bdurmin+REST_MINUTES))
     def free(start, dur):
-        if start + dur > end_hour*60: return False
+        close_min = _WEEKEND_CLOSE_MIN if is_weekend_fixed else end_hour*60
+        if start + dur > close_min: return False
         for bs,be in booked:
             if start < be and start+dur > bs: return False
         return f"{start//60:02d}:{start%60:02d}" not in blocked_slots
-    candidates = list(range(start_hour*60, end_hour*60+1, 60))
-    for _, be in booked:
-        if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
-            candidates.append(be)
+    if is_weekend_fixed:
+        candidates = list(_WEEKEND_SLOT_MIN)
+    else:
+        candidates = list(range(start_hour*60, end_hour*60+1, 60))
+        for _, be in booked:
+            if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
+                candidates.append(be)
     if year==now.year and month==now.month and day==now.day:
         candidates = [c for c in candidates if c > now.hour*60+now.minute]
     return [f"{c//60:02d}:{c%60:02d}" for c in sorted(set(c for c in candidates if free(c, dur_min)))]
@@ -116,6 +127,30 @@ def api_services(): return get_services()
 
 @app.get("/api/reviews")
 def api_reviews(): return get_reviews()
+
+class ReviewIn(BaseModel):
+    name: str
+    service: str = ""
+    rating: int
+    text: str = ""
+
+@app.post("/api/reviews")
+def api_add_review(r: ReviewIn):
+    name = (r.name or "").strip()
+    if not name:
+        return {"ok": False, "error": "Укажите имя"}
+    if r.rating < 1 or r.rating > 5:
+        return {"ok": False, "error": "Оценка должна быть от 1 до 5"}
+    text = (r.text or "").strip()
+    service = (r.service or "").strip() or "Массаж"
+    con = db()
+    cur = con.execute(
+        "INSERT INTO reviews (booking_id,user_id,service,rating,text,created_at,username) VALUES (?,?,?,?,?,?,?)",
+        (0, 0, service, r.rating, text, now_t().strftime("%Y-%m-%d %H:%M"), name))
+    con.commit(); con.close()
+    stars = "⭐" * r.rating
+    notify_admins(f"⭐ Новый отзыв (с сайта)!\n\n💆 {service}\n{stars}\n👤 {name}" + (f"\n💬 {text}" if text else ""))
+    return {"ok": True, "id": cur.lastrowid}
 
 @app.get("/api/slots")
 def api_slots(year: int, month: int, day: int, dur_min: int = 60):

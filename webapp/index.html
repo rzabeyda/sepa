@@ -66,7 +66,9 @@
   .contact-btn:active{transform:scale(.97);opacity:.85;}
   .contact-btn.tg{border-color:rgba(38,121,185,.3);background:rgba(38,121,185,.08);}
   .contact-btn.phone{border-color:rgba(200,169,110,.25);background:rgba(200,169,110,.05);}
+  .contact-btn.bot{border-color:rgba(38,121,185,.3);background:rgba(38,121,185,.08);}
   .contact-btn .ico{width:28px;height:28px;flex-shrink:0;object-fit:contain;}
+  .contact-btn .ico-emoji{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;}
   .contact-btn .label{font-weight:600;font-size:14px;color:#fff;}
 
   /* SERVICE CARDS */
@@ -146,9 +148,11 @@
   /* FORM */
   .form-group{margin-bottom:14px;}
   .form-group label{display:block;color:var(--muted);font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;font-weight:600;}
-  .form-group input{width:100%;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
-  .form-group input:focus{border-color:var(--accent);}
-  .form-group input.error{border-color:#e05555;animation:shake .3s ease;}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
+  .form-group textarea{resize:vertical;min-height:70px;}
+  .form-group select{appearance:none;-webkit-appearance:none;}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);}
+  .form-group input.error,.form-group textarea.error{border-color:#e05555;animation:shake .3s ease;}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 
   /* SUMMARY */
@@ -163,6 +167,11 @@
   .review-stars{color:var(--accent);font-size:13px;margin-bottom:6px;}
   .review-text{color:var(--text);font-size:13px;line-height:1.65;margin-bottom:8px;}
   .review-meta{color:var(--muted);font-size:11px;font-weight:500;}
+  .review-form-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;}
+  .star-picker{display:flex;gap:6px;font-size:28px;}
+  .star-picker span{color:var(--border);cursor:pointer;transition:color .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
+  .star-picker span:active{transform:scale(.9);}
+  .star-picker span.active{color:var(--accent);}
 
   /* BOOKING CARD */
   .booking-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;}
@@ -233,6 +242,10 @@
       <a class="contact-btn phone" href="tel:+37253730882">
         <img class="ico" src="/images/trubka.png" onerror="this.src=''">
         <div class="label" data-t="phone_btn">Helista</div>
+      </a>
+      <a class="contact-btn bot" id="btn-tg-bot" href="https://t.me/skffmassagebot" target="_blank" rel="noopener" style="display:none">
+        <span class="ico-emoji">🤖</span>
+        <div class="label" data-t="bot_btn">Telegram Bot</div>
       </a>
     </div>
     <div class="relax-divider"><span class="relax-title">Relax</span></div>
@@ -318,6 +331,28 @@
 <div id="page-reviews" class="page">
   <div class="section" style="padding-top:20px">
     <p class="section-title" data-t="reviews_title">Arvustused</p>
+    <button class="btn btn-outline" id="btn-toggle-review-form" style="margin-top:0;margin-bottom:16px" onclick="toggleReviewForm()" data-t="write_review">✍️ Jäta arvustus</button>
+    <div class="review-form-box" id="review-form" style="display:none">
+      <div class="form-group">
+        <label data-t="service">Teenus</label>
+        <select id="rev-service"></select>
+      </div>
+      <div class="form-group">
+        <label data-t="your_rating">Hinnang</label>
+        <div class="star-picker" id="rev-stars">
+          <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-t="name_label">Nimi</label>
+        <input type="text" id="rev-name" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label data-t="review_text_label">Kommentaar</label>
+        <textarea id="rev-text" rows="3"></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-submit-review" onclick="submitReview()" data-t="submit_review">Saada arvustus</button>
+    </div>
     <div id="reviews-list" class="loader">...</div>
   </div>
 </div>
@@ -341,7 +376,7 @@ const T={
   ru:{
     nav_home:'Главная',nav_book:'Запись',nav_my:'Брони',nav_rev:'Отзывы',
     subtitle:'Массажист · Таллин',grade:'Массажист, 5 разряд',tg_btn:'Написать мне',
-    phone_btn:'Позвонить мне',book_btn:'Записаться на сеанс',
+    phone_btn:'Позвонить мне',bot_btn:'Телеграм Бот',book_btn:'Записаться на сеанс',
     choose_service:'Выберите услугу',duration:'Длительность',min:'мин',
     choose_date:'Выбрать дату →',back:'← Назад',date_time:'Дата и время',
     time:'Время',next:'Далее →',your_data:'Ваши данные',name_label:'Имя',
@@ -355,18 +390,22 @@ const T={
     days:['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
     open_in_tg:'Откройте через Telegram для просмотра броней',
     find_by_phone_prompt:'Введите номер телефона, который указывали при записи',
+    change_phone:'Изменить номер телефона',
     find_btn:'Найти мои брони',
     cancel_btn:'Отменить запись',cancel_confirm:'Точно отменить эту запись?',
     cancel_done:'Запись отменена',
     from_price:'от',
     page_title:'Сергей — массажист',hero_name:'Сергей',no_connection:'Нет соединения',
     biz_company:'Компания',biz_specialist:'Специалист',biz_cert:'Сертификат',
-    biz_exp:'Опыт работы',biz_exp_val:'2+ года',biz_address:'Адрес'
+    biz_exp:'Опыт работы',biz_exp_val:'2+ года',biz_address:'Адрес',
+    write_review:'✍️ Оставить отзыв',your_rating:'Оценка',review_text_label:'Комментарий',
+    submit_review:'Отправить отзыв',select_rating_first:'Сначала выберите оценку',
+    review_sent:'Спасибо за отзыв!'
   },
   et:{
     nav_home:'Pealeht',nav_book:'Broneeri',nav_my:'Minu ajad',nav_rev:'Arvustused',
     subtitle:'Massöör · Tallinn',grade:'Massöör, 5. tase',tg_btn:'Kirjuta mulle',
-    phone_btn:'Helista',book_btn:'Broneeri seanss',
+    phone_btn:'Helista',bot_btn:'Telegram Bot',book_btn:'Broneeri seanss',
     choose_service:'Vali teenus',duration:'Kestus',min:'min',
     choose_date:'Vali kuupäev →',back:'← Tagasi',date_time:'Kuupäev ja kellaaeg',
     time:'Kellaaeg',next:'Edasi →',your_data:'Teie andmed',name_label:'Nimi',
@@ -380,18 +419,22 @@ const T={
     days:['E','T','K','N','R','L','P'],
     open_in_tg:'Ava Telegrami kaudu broneeringute vaatamiseks',
     find_by_phone_prompt:'Sisesta telefoninumber, mille sisestasid broneerimisel',
+    change_phone:'Muuda telefoninumbrit',
     find_btn:'Leia minu broneeringud',
     cancel_btn:'Tühista broneering',cancel_confirm:'Kas oled kindel, et soovid tühistada?',
     cancel_done:'Broneering tühistatud',
     from_price:'alates',
     page_title:'Sergei — massöör Tallinnas',hero_name:'Sergei',no_connection:'Ühendus puudub',
     biz_company:'Ettevõte',biz_specialist:'Spetsialist',biz_cert:'Sertifikaat',
-    biz_exp:'Kogemus',biz_exp_val:'2+ aastat',biz_address:'Aadress'
+    biz_exp:'Kogemus',biz_exp_val:'2+ aastat',biz_address:'Aadress',
+    write_review:'✍️ Jäta arvustus',your_rating:'Hinnang',review_text_label:'Kommentaar',
+    submit_review:'Saada arvustus',select_rating_first:'Vali kõigepealt hinnang',
+    review_sent:'Aitäh arvustuse eest!'
   },
   en:{
     nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',
     subtitle:'Massage therapist · Tallinn',grade:'Massage therapist, Level 5',tg_btn:'Message me',
-    phone_btn:'Call me',book_btn:'Book a session',
+    phone_btn:'Call me',bot_btn:'Telegram Bot',book_btn:'Book a session',
     choose_service:'Choose a service',duration:'Duration',min:'min',
     choose_date:'Choose date →',back:'← Back',date_time:'Date & time',
     time:'Time',next:'Next →',your_data:'Your details',name_label:'Name',
@@ -405,13 +448,17 @@ const T={
     days:['Mo','Tu','We','Th','Fr','Sa','Su'],
     open_in_tg:'Open via Telegram to view bookings',
     find_by_phone_prompt:'Enter the phone number you used when booking',
+    change_phone:'Change phone number',
     find_btn:'Find my bookings',
     cancel_btn:'Cancel booking',cancel_confirm:'Cancel this booking?',
     cancel_done:'Booking cancelled',
     from_price:'from',
     page_title:'Sergei — massage therapist in Tallinn',hero_name:'Sergei',no_connection:'Connection error',
     biz_company:'Company',biz_specialist:'Specialist',biz_cert:'Certificate',
-    biz_exp:'Experience',biz_exp_val:'2+ years',biz_address:'Address'
+    biz_exp:'Experience',biz_exp_val:'2+ years',biz_address:'Address',
+    write_review:'✍️ Leave a review',your_rating:'Rating',review_text_label:'Comment',
+    submit_review:'Submit review',select_rating_first:'Please choose a rating first',
+    review_sent:'Thanks for your review!'
   }
 };
 let lang='et';
@@ -488,6 +535,9 @@ function setLang(l){
     const k=el.getAttribute('data-t');
     if(T[lang][k]) el.textContent=T[lang][k];
   });
+  // Бот в Телеграме только на русском — кнопку показываем лишь на русской версии сайта
+  const botBtn=document.getElementById('btn-tg-bot');
+  if(botBtn) botBtn.style.display = (lang==='ru') ? 'flex' : 'none';
   if(calYear) renderCalendar();
   if(services.length) renderServicesHTML();
 }
@@ -676,9 +726,58 @@ async function loadReviews(){
       <div class="review-card">
         <div class="review-stars">${'⭐'.repeat(r.rating)}</div>
         ${r.text?`<div class="review-text">${r.text}</div>`:''}
-        <div class="review-meta">💆 ${svcName(r.service)} · ${r.username} · ${r.date}</div>
+        <div class="review-meta">💆 ${svcName(r.service)} · ${r.username}</div>
       </div>`).join('');
   }catch(e){document.getElementById('reviews-list').innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
+}
+
+// ── WRITE A REVIEW (доступно всем, не только после визита) ────────────────
+let selRevRating=0;
+function fillReviewServiceSelect(){
+  const sel=document.getElementById('rev-service');
+  sel.innerHTML=(services.length?services:[{name:'Массаж'}]).map(s=>`<option value="${s.name}">${svcName(s.name)}</option>`).join('');
+}
+function renderRevStars(){
+  document.querySelectorAll('#rev-stars span').forEach(st=>{
+    st.classList.toggle('active',parseInt(st.dataset.v)<=selRevRating);
+  });
+}
+document.querySelectorAll('#rev-stars span').forEach(st=>{
+  st.addEventListener('click',()=>{selRevRating=parseInt(st.dataset.v);renderRevStars();});
+});
+function toggleReviewForm(){
+  const box=document.getElementById('review-form');
+  const opening=box.style.display==='none';
+  if(opening){fillReviewServiceSelect();}
+  box.style.display=opening?'block':'none';
+}
+async function submitReview(){
+  const nameEl=document.getElementById('rev-name'),textEl=document.getElementById('rev-text');
+  const name=nameEl.value.trim();
+  nameEl.classList.remove('error');
+  if(!name){
+    nameEl.classList.add('error'); nameEl.focus();
+    try{tg?.HapticFeedback?.notificationOccurred('error');}catch(e){}
+    return;
+  }
+  if(!selRevRating){
+    try{tg?.HapticFeedback?.notificationOccurred('error');}catch(e){}
+    alert(t('select_rating_first'));
+    return;
+  }
+  const btn=document.getElementById('btn-submit-review'); btn.disabled=true; btn.textContent='...';
+  try{
+    const res=await fetch(API+'/api/reviews',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,service:document.getElementById('rev-service').value,rating:selRevRating,text:textEl.value.trim()})});
+    const data=await res.json();
+    if(data.ok){
+      nameEl.value=''; textEl.value=''; selRevRating=0; renderRevStars();
+      document.getElementById('review-form').style.display='none';
+      try{tg?.HapticFeedback?.notificationOccurred('success');}catch(e){}
+      reviewsLoaded=false; await loadReviews();
+    } else { alert(data.error||'Error'); }
+  }catch(e){alert(t('no_connection'));}
+  btn.disabled=false; btn.textContent=t('submit_review');
 }
 
 // ── MY BOOKINGS ────────────────────────────────────────────────────────────
@@ -698,8 +797,8 @@ function renderPhoneLookupForm(prefill){
     <div class="empty-state">
       <p style="margin-bottom:14px">${t('find_by_phone_prompt')}</p>
       <input id="mybk-phone" type="tel" placeholder="+372 ..." value="${prefill||''}"
-        style="width:100%;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;outline:none;margin-bottom:10px;">
-      <button class="btn btn-primary" style="max-width:240px;margin:0 auto" onclick="lookupByPhone()">${t('find_btn')}</button>
+        onkeydown="if(event.key==='Enter')lookupByPhone()"
+        style="width:100%;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;outline:none;">
     </div>`;
 }
 
@@ -717,8 +816,7 @@ async function fetchAndRenderBookings(query){
     const bookings=await fetch(`${API}/api/user_bookings?${query}`).then(r=>r.json());
     if(!bookings.length){
       el.innerHTML=`<div class="empty-state">${t('no_bookings')}<br><br>
-        <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="goBook()">${t('book_btn')}</button>
-        ${!userId?`<br><button class="btn btn-outline" style="max-width:240px;margin:10px auto 0" onclick="renderPhoneLookupForm()">${t('find_btn')}</button>`:''}</div>`;
+        <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="goBook()">${t('book_btn')}</button></div>`;
       return;
     }
     el.innerHTML=bookings.map(b=>`

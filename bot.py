@@ -666,6 +666,10 @@ class Reschedule(StatesGroup):
 class Review(StatesGroup):
     rating=State(); text=State()
 
+class WriteReview(StatesGroup):
+    """Свободный отзыв, не привязанный к брони — доступен любому в любое время."""
+    service=State(); rating=State(); text=State()
+
 class TipState(StatesGroup):
     amount = State()
 
@@ -720,9 +724,15 @@ WORK_SCHEDULE = {
     2: (17, 19),  # Среда
     3: (17, 19),  # Четверг
     4: (17, 19),  # Пятница
-    5: (11, 18),  # Суббота
-    6: (11, 19),  # Воскресенье
+    5: (12, 18),  # Суббота — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
+    6: (12, 18),  # Воскресенье — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
 }
+
+# По субботам и воскресеньям запись возможна только на эти 4 времени — никакого
+# почасового диапазона, как в будни. Совпадает 1-в-1 с api.py.
+WEEKEND_FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
+_WEEKEND_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in WEEKEND_FIXED_SLOTS)
+_WEEKEND_CLOSE_MIN = _WEEKEND_SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
 
 def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     now = now_tallinn()
@@ -732,6 +742,7 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     if weekday not in WORK_SCHEDULE:
         return []
     start_hour, end_hour = WORK_SCHEDULE[weekday]
+    is_weekend_fixed = weekday in (5, 6)
 
     manual_blocked = set()
     for slot in get_blocked_slots_for_date(key):
@@ -747,16 +758,20 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
         booked.append((h*60+m, h*60+m+dur))
 
     def is_free(start, dur):
-        if start + dur > end_hour*60: return False
+        close_min = _WEEKEND_CLOSE_MIN if is_weekend_fixed else end_hour*60
+        if start + dur > close_min: return False
         for bs, be in booked:
             if start < be and start+dur > bs: return False
         if start in manual_blocked: return False
         return True
 
-    candidates = list(range(start_hour*60, end_hour*60+1, 60))
-    for _, be in booked:
-        if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
-            candidates.append(be)
+    if is_weekend_fixed:
+        candidates = list(_WEEKEND_SLOT_MIN)
+    else:
+        candidates = list(range(start_hour*60, end_hour*60+1, 60))
+        for _, be in booked:
+            if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
+                candidates.append(be)
 
     if year == now.year and month == now.month and day == now.day:
         now_min = now.hour * 60 + now.minute
@@ -813,7 +828,7 @@ def format_booking(b, idx=None, username=None):
 def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     has_booking = bool(user_id and get_user_bookings(user_id))
     broni_btn = KeyboardButton(text="✅ Брони") if has_booking else KeyboardButton(text="🗓 Брони")
-    row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 Бонусы")]
+    row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 ПРОМОКОД")]
     row2 = [KeyboardButton(text="💬 Написать"), KeyboardButton(text="👱‍♀️ Коллеги"), KeyboardButton(text="⭐ Отзывы")]
     buttons = [row1, row2]
     if is_admin: buttons.append([KeyboardButton(text="🔐 Админка")])
@@ -1087,8 +1102,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         caption=(
             "*Сергей — мастер массажа в Таллине* 💆\n\n"
             "⏱ Пн–Пт: 17:00–19:00\n"
-            "⏱ Сб: 11:00–18:00\n"
-            "⏱ Вс: 11:00–19:00\n\n"
+            "⏱ Сб/Вс: запись на 12:00, 14:00, 16:00, 18:00\n\n"
             "Запишитесь онлайн — это займёт 1 минуту 👇"
         ),
         parse_mode="Markdown",
@@ -1113,9 +1127,6 @@ async def btn_my_bookings(message: types.Message, state: FSMContext):
             reply_markup=find_by_phone_kb())
         return
     await message.answer("📋 Ваши брони:", reply_markup=booking_list_kb(message.from_user.id))
-    await message.answer(
-        "Записывались через сайт под другим номером или без Телеграма?",
-        reply_markup=find_by_phone_kb())
 
 def _norm_phone(p):
     return re.sub(r"[^\d+]", "", p or "")
@@ -1145,6 +1156,10 @@ async def find_by_phone_result(message: types.Message, state: FSMContext):
     )
     await message.answer(text)
 
+def write_review_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✍️ Оставить отзыв", callback_data="wr_start")]])
+
 @dp.message(F.text == "⭐ Отзывы")
 async def btn_reviews(message: types.Message):
     con = db_connect()
@@ -1153,22 +1168,76 @@ async def btn_reviews(message: types.Message):
     ).fetchall()
     con.close()
     if not rows:
-        await message.answer("😊 Отзывов пока нет — будьте первым!")
+        await message.answer("😊 Отзывов пока нет — будьте первым!", reply_markup=write_review_kb())
         return
     text = "⭐ Отзывы клиентов:\n\n"
     for row in rows:
         rating, rv, svc_name, created_at = row[0], row[1], row[2], row[3]
+        # "@" в username уже добавлен при сохранении отзыва, если это реальный
+        # тг-хэндл — здесь просто показываем как есть, без угадывания.
         username = row[4] if len(row) > 4 and row[4] else "Аноним"
-        if username != "Аноним" and not username.startswith("@"):
-            username = "@" + username
         stars = "⭐" * rating
-        date_str = created_at[:10] if created_at else ""
-        text += f"{stars} — {svc_name} ({date_str})\n"
+        text += f"{stars} — {svc_name}\n"
         text += f"👤 {username}\n"
         if rv:
             text += f"💬 {rv}"
         text += "\n\n"
-    await message.answer(text.strip())
+    await message.answer(text.strip(), reply_markup=write_review_kb())
+
+@dp.callback_query(F.data == "wr_start")
+async def wr_start(call: types.CallbackQuery, state: FSMContext):
+    services = get_services_db()  # только активные — Сегментарный/Лечебный сюда не попадают
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=s["name"], callback_data=f"wr_svc:{s['name']}")]
+        for s in services])
+    await state.set_state(WriteReview.service)
+    await call.message.answer("На какую услугу оставите отзыв?", reply_markup=kb)
+    await call.answer()
+
+@dp.callback_query(F.data.startswith("wr_svc:"), WriteReview.service)
+async def wr_service(call: types.CallbackQuery, state: FSMContext):
+    svc_name = call.data.split(":", 1)[1]
+    await state.update_data(wr_service=svc_name)
+    await state.set_state(WriteReview.rating)
+    stars = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=s, callback_data=f"wr_rating:{i+1}")] for i, s in enumerate(stars)])
+    await call.message.answer("Оцените от 1 до 5 ⭐", reply_markup=kb)
+    await call.answer()
+
+@dp.callback_query(F.data.startswith("wr_rating:"), WriteReview.rating)
+async def wr_rating(call: types.CallbackQuery, state: FSMContext):
+    rating = int(call.data.split(":")[1])
+    await state.update_data(wr_rating=rating)
+    await state.set_state(WriteReview.text)
+    await call.message.answer("Напишите комментарий (или нажмите «Пропустить»):",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Пропустить", callback_data="wr_skip")]]))
+    await call.answer()
+
+async def _save_write_review(message_or_call, state: FSMContext, text: str):
+    data = await state.get_data()
+    svc = data.get("wr_service", "")
+    rating = data.get("wr_rating", 5)
+    user = message_or_call.from_user
+    username = f"@{user.username}" if user.username else (user.first_name or "Аноним")
+    add_review(0, user.id, svc, rating, text, username)
+    stars = "⭐" * rating
+    for _aid in ADMIN_IDS:
+        try: await bot.send_message(_aid, f"⭐ Новый отзыв!\n\n💅 {svc}\n{stars}" + (f"\n💬 {text}" if text else ""))
+        except Exception as _e: print(f"[WARN] {_e}")
+    await state.clear()
+
+@dp.callback_query(F.data == "wr_skip", WriteReview.text)
+async def wr_skip(call: types.CallbackQuery, state: FSMContext):
+    await _save_write_review(call, state, "")
+    await call.message.answer("🙏 Спасибо за отзыв!")
+    await call.answer()
+
+@dp.message(WriteReview.text)
+async def wr_text(message: types.Message, state: FSMContext):
+    text = message.text.strip() if message.text and message.text != "/skip" else ""
+    await _save_write_review(message, state, text)
+    await message.answer("🙏 Спасибо за отзыв!")
 
 @dp.message(F.text == "👱‍♀️ Коллеги")
 async def btn_friends(message: types.Message):
@@ -1206,7 +1275,7 @@ async def friends_back(call: types.CallbackQuery):
     await call.message.answer("💆 Коллеги Сергея\n\nВыберите мастера 👇", reply_markup=kb)
     await call.answer()
 
-@dp.message(F.text == "🎁 Бонусы")
+@dp.message(F.text == "🎁 ПРОМОКОД")
 async def btn_referral(message: types.Message):
     user_id = message.from_user.id
     ref_link = f"https://t.me/{(await bot.get_me()).username}?start=ref_{user_id}"
@@ -1755,7 +1824,7 @@ async def admin_actions(call: types.CallbackQuery):
             await call.answer("Отзыв не найден", show_alert=True); return
         _,rating,rv,svc_name,created_at,username = row
         stars="⭐"*rating
-        uname = f"@{username}" if username else "Аноним"
+        uname = username or "Аноним"
         date_str = created_at[:10] if created_at else ""
         text = f"{stars}\n👤 {uname}\n💅 {svc_name}\n📅 {date_str}"
         if rv: text += f"\n💬 {rv}"
@@ -2151,7 +2220,7 @@ async def review_rating(call: types.CallbackQuery, state: FSMContext):
         svc=cb_row[0] if cb_row else ""
     else:
         svc=b["service"]
-    username = call.from_user.username or call.from_user.first_name or "Аноним"
+    username = f"@{call.from_user.username}" if call.from_user.username else (call.from_user.first_name or "Аноним")
     review_id=add_review(bid,call.from_user.id,svc,rating,"",username)
     await state.update_data(review_bid=bid,review_rating=rating,review_service=svc,review_id=review_id)
     stars="⭐"*rating
