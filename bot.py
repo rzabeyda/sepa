@@ -155,6 +155,7 @@ def migrate_db():
         ("referrals", "voucher_sent",   "ALTER TABLE referrals ADD COLUMN voucher_sent INTEGER DEFAULT 0"),
         ("reviews",   "username",       "ALTER TABLE reviews ADD COLUMN username TEXT DEFAULT ''"),
         ("services",  "description",    "ALTER TABLE services ADD COLUMN description TEXT DEFAULT ''"),
+        ("bookings",  "duration_min",   "ALTER TABLE bookings ADD COLUMN duration_min INTEGER"),
     ]
     for table, col, stmt in alter_stmts:
         if not column_exists(con, table, col):
@@ -392,10 +393,20 @@ _DEFAULT_SERVICES = [
     ("Спортивный массаж",      "35€", "60 мин", 60, "images/2.jpg", 2),
     ("Тайский массаж",         "35€", "60 мин", 60, "images/3.jpg", 3),
     ("Ароматический массаж",   "35€", "60 мин", 60, "images/4.jpg", 4),
-    ("Сегментарный массаж",    "35€", "60 мин", 60, "images/5.jpg", 5),
-    ("Лимфодренажный массаж",  "35€", "60 мин", 60, "images/6.jpg", 6),
-    ("Лечебный массаж",        "35€", "60 мин", 60, "images/7.jpg", 7),
+    ("Лимфодренажный массаж",  "35€", "60 мин", 60, "images/6.jpg", 5),
 ]
+
+# Услуги, которые больше не предлагаются — не удаляем из базы (чтобы не сломать
+# историю старых записей), а просто деактивируем, чтобы они не появлялись в меню.
+_REMOVED_SERVICES = ["Сегментарный массаж", "Лечебный массаж"]
+
+_DEFAULT_SERVICE_DESCRIPTIONS = {
+    "Классический массаж": "Снятие мышечного напряжения и усталости. Глубокое расслабление и снятие стресса. Повышение тонуса всего тела.",
+    "Спортивный массаж": "Спортивный массаж поможет вам вернуться в строй! Интенсивные техники глубокого массажа снимают мышечные спазмы, улучшают эластичность тканей и предотвращают травмы. Идеально подходит как до, так и после интенсивных тренировок. Не терпите боль — верните лёгкость мышцам.",
+    "Тайский массаж": "Тайский массаж на ковриках (также известный как йога-массаж) — это глубоко действующая терапия, сочетающая акупрессуру и скручивающие движения на растяжку, часто называемая «йогой для ленивых». Сеанс проходит на татами, клиент одет в свободную удобную одежду, а терапевт прорабатывает всё тело от головы до пят.",
+    "Ароматический массаж": "Часовой отдых и погружение в мир полного покоя. Мягкие массажные техники в сочетании с тёплыми натуральными эфирными маслами снимают мышечное напряжение, успокаивают нервную систему и способствуют глубокому восстанавливающему сну. Подарите себе расслабляющую роскошь — запишитесь на сеанс уже сегодня!",
+    "Лимфодренажный массаж": "Мягкая и деликатная мануальная техника, направленная на стимуляцию лимфообращения и удаление избытка жидкости и токсинов из организма. Помогает уменьшить отёки, улучшить контуры тела и укрепить иммунную систему.",
+}
 
 def _seed_services():
     con = db_connect()
@@ -407,6 +418,12 @@ def _seed_services():
         else:
             con.execute("INSERT INTO services (name,price,duration,duration_min,img,sort_order) VALUES (?,?,?,?,?,?)",
                 (name, price, duration, duration_min, img, sort_order))
+    for name in _REMOVED_SERVICES:
+        con.execute("UPDATE services SET active=0 WHERE name=?", (name,))
+    for name, desc in _DEFAULT_SERVICE_DESCRIPTIONS.items():
+        row = con.execute("SELECT description FROM services WHERE name=?", (name,)).fetchone()
+        if row and not (row[0] or "").strip():
+            con.execute("UPDATE services SET description=? WHERE name=?", (desc, name))
     con.commit()
     con.close()
 
@@ -466,11 +483,11 @@ def delete_service_db(sid):
     con.execute("DELETE FROM services WHERE id=?", (sid,))
     con.commit(); con.close()
 
-def add_booking(user_id, service, year, month, day, time, name, phone):
+def add_booking(user_id, service, year, month, day, time, name, phone, duration_min=None):
     con = db_connect(); cur = con.cursor()
     cur.execute(
-        "INSERT INTO bookings (user_id,service,year,month,day,time,name,phone) VALUES (?,?,?,?,?,?,?,?)",
-        (user_id,service,year,month,day,time,name,phone)
+        "INSERT INTO bookings (user_id,service,year,month,day,time,name,phone,duration_min) VALUES (?,?,?,?,?,?,?,?,?)",
+        (user_id,service,year,month,day,time,name,phone,duration_min)
     ); bid = cur.lastrowid; con.commit(); con.close(); return bid
 
 def remove_booking(bid):
@@ -508,7 +525,8 @@ def _row_to_booking(row):
     return {"id":row[0],"user_id":row[1],"service":row[2],"year":row[3],"month":row[4],
             "day":row[5],"time":row[6],"name":row[7],"phone":row[8],
             "reminded_24":row[9],"reminded_2":row[10],"review_sent":row[11] if len(row)>11 else 0,
-            "rebooking_sent":row[12] if len(row)>12 else 0}
+            "rebooking_sent":row[12] if len(row)>12 else 0,
+            "duration_min":row[13] if len(row)>13 else None}
 
 def log_cancellation(b, cancelled_by):
     con = db_connect()
@@ -672,6 +690,9 @@ class Broadcast(StatesGroup):
 class BanUser(StatesGroup):
     username=State()
 
+class FindByPhone(StatesGroup):
+    phone=State()
+
 def date_key(year, month, day): return f"{year}-{month:02d}-{day:02d}"
 def is_day_blocked(year, month, day): return date_key(year,month,day) in get_blocked_days()
 
@@ -679,6 +700,14 @@ def duration_minutes(svc):
     if not svc: return 60
     if svc.get("duration_min"): return svc["duration_min"]
     m = re.search(r"(\d+)", svc.get("duration","60")); return int(m.group(1)) if m else 60
+
+REST_MINUTES = 30  # отдых Сергею после каждого массажа перед следующей записью
+
+def booking_duration(b):
+    """Реальная длительность конкретной брони — берём сохранённое значение
+    (клиент мог выбрать 60 или 90 мин), а для старых записей без него
+    откатываемся на длительность услуги по умолчанию."""
+    return b.get("duration_min") or duration_minutes(get_service(b["service"]))
 
 def get_end_time(start_slot, dur_min):
     h,m = int(start_slot.split(":")[0]), int(start_slot.split(":")[1])
@@ -713,7 +742,7 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     for b in get_all_bookings():
         if exclude_bid and b["id"] == exclude_bid: continue
         if b["year"] != year or b["month"] != month or b["day"] != day: continue
-        svc = get_service(b["service"]); dur = duration_minutes(svc)
+        dur = booking_duration(b) + REST_MINUTES
         h, m = int(b["time"].split(":")[0]), int(b["time"].split(":")[1])
         booked.append((h*60+m, h*60+m+dur))
 
@@ -776,7 +805,7 @@ def format_booking(b, idx=None, username=None):
     prefix = f"Бронь №{idx}\n" if idx else ""
     svc = get_service(b["service"]); dur_str = svc["duration"] if svc else ""
     tg_line = f" | 💬 @{username}" if username else ""
-    addr = "\n\n🏠 Linnamäe tee 24–44" if username is None else ""
+    addr = "\n\n🏠 Linnamäe tee 24-42" if username is None else ""
     countdown = time_until_booking(b)
     countdown_line = f"\n{countdown}" if countdown else ""
     return f"{prefix}💆 {b['service']}\n⏱ Длительность: ~{dur_str}\n🕐 {b['time']} | {b['day']} {month_name}{countdown_line}\n👤 {b['name']} 📞 {b['phone']}{tg_line}{addr}".strip()
@@ -793,7 +822,7 @@ def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
 def main_menu_kb():
     rows = []
     for s in get_services_db():
-        rows.append([InlineKeyboardButton(text=f"{s['name']} — {s['price']} (~{s['duration']})", callback_data=f"svc:{s['name']}")])
+        rows.append([InlineKeyboardButton(text=f"{s['name']} — 60 мин {s['price']} · 90 мин 50€", callback_data=f"svc:{s['name']}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def months_kb(year):
@@ -853,14 +882,14 @@ def make_calendar_url(b) -> str:
                          int(b["time"].split(":")[0]), int(b["time"].split(":")[1]))
         end = start + timedelta(minutes=dur)
         fmt = "%Y%m%dT%H%M%S"
-        title = f"Маникюр у Сергея — {b['service']}"
-        details = f"Адрес: Linnamäe tee 24–44\nТелефон: +372 53 730 882"
+        title = f"Массаж у Сергея — {b['service']}"
+        details = f"Адрес: Linnamäe tee 24-42\nТелефон: +372 53 730 882"
         url = (
             f"https://calendar.google.com/calendar/r/eventedit"
             f"?text={title.replace(' ', '+')}"
             f"&dates={start.strftime(fmt)}/{end.strftime(fmt)}"
             f"&details={details.replace(' ', '+').replace(':', '%3A')}"
-            f"&location=Linnam%C3%A4e+tee+24-44"
+            f"&location=Linnam%C3%A4e+tee+24-42"
         )
         return url
     except Exception:
@@ -1057,8 +1086,9 @@ async def cmd_start(message: types.Message, state: FSMContext):
         photo=photo,
         caption=(
             "*Сергей — мастер массажа в Таллине* 💆\n\n"
-            "⏱ Пн–Пт: 17:15–19:00\n"
-            "⏱ Сб–Вс: 10:00–17:00\n\n"
+            "⏱ Пн–Пт: 17:00–19:00\n"
+            "⏱ Сб: 11:00–18:00\n"
+            "⏱ Вс: 11:00–19:00\n\n"
             "Запишитесь онлайн — это займёт 1 минуту 👇"
         ),
         parse_mode="Markdown",
@@ -1069,12 +1099,51 @@ async def cmd_start(message: types.Message, state: FSMContext):
 async def btn_services(message: types.Message, state: FSMContext):
     await state.clear(); await message.answer("Выберите услугу 👇", reply_markup=main_menu_kb())
 
+def find_by_phone_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔍 Найти бронь по телефону", callback_data="find_by_phone")]])
+
 @dp.message(F.text.in_({"✅ Брони", "🗓 Брони"}))
 async def btn_my_bookings(message: types.Message, state: FSMContext):
     await state.clear()
     if not get_user_bookings(message.from_user.id):
-        await message.answer("У вас нет активных броней."); return
+        await message.answer(
+            "У вас нет активных броней под этим Telegram-аккаунтом.\n\n"
+            "Если вы записывались через сайт — можно найти бронь по номеру телефона:",
+            reply_markup=find_by_phone_kb())
+        return
     await message.answer("📋 Ваши брони:", reply_markup=booking_list_kb(message.from_user.id))
+    await message.answer(
+        "Записывались через сайт под другим номером или без Телеграма?",
+        reply_markup=find_by_phone_kb())
+
+def _norm_phone(p):
+    return re.sub(r"[^\d+]", "", p or "")
+
+@dp.callback_query(F.data == "find_by_phone")
+async def find_by_phone_start(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("Введите номер телефона, который указывали при записи:")
+    await state.set_state(FindByPhone.phone)
+    await call.answer()
+
+@dp.message(FindByPhone.phone)
+async def find_by_phone_result(message: types.Message, state: FSMContext):
+    await state.clear()
+    target = _norm_phone(message.text)
+    if not target:
+        await message.answer("Не похоже на номер телефона. Попробуйте ещё раз через «🗓 Брони».")
+        return
+    con = db_connect()
+    rows = con.execute("SELECT service,year,month,day,time,name,phone FROM bookings").fetchall()
+    con.close()
+    matches = [r for r in rows if _norm_phone(r[6]) == target]
+    if not matches:
+        await message.answer("Ничего не нашёл по этому номеру.")
+        return
+    text = "📋 Найденные брони:\n\n" + "\n\n".join(
+        f"💆 {r[0]}\n🕐 {r[4]} | {r[3]} {MONTHS_GEN[r[2]]}\n👤 {r[5]}" for r in matches
+    )
+    await message.answer(text)
 
 @dp.message(F.text == "⭐ Отзывы")
 async def btn_reviews(message: types.Message):
@@ -1202,8 +1271,7 @@ async def cb_portfolio(call: types.CallbackQuery):
 @dp.message(F.text == "💬 Написать")
 async def btn_chat(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/Sepa17")],
-        [InlineKeyboardButton(text="👥 Комьюнити", url="https://t.me/beautytallinn")]])
+        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/Sepa17")]])
     await message.answer("💬 Выбери как удобнее:", reply_markup=kb)
 
 @dp.callback_query(F.data.startswith("tip_open:"))
@@ -1418,8 +1486,10 @@ async def service_choice(call: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="⏱ 90 мин — 50€", callback_data="dur:90:50€")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
     ])
+    desc = (svc.get("description") or "").strip()
+    desc_block = f"\n\n{desc}" if desc else ""
     await call.message.answer_photo(photo=photo,
-        caption=f"✅ Вы выбрали: *{service_name}*\n\nВыберите длительность:",
+        caption=f"✅ Вы выбрали: *{service_name}*{desc_block}\n\nВыберите длительность:",
         parse_mode="Markdown", reply_markup=dur_kb)
     await state.set_state(Booking.duration); await call.answer()
 
@@ -1536,7 +1606,7 @@ async def _finalize_booking(message, state, user_id):
         await state.clear(); return
     voucher_code = data.get("voucher_code")
     voucher_discount = data.get("voucher_discount", 0)
-    bid = add_booking(user_id=user_id, service=data["service"], year=yr, month=mon, day=day, time=data["time"], name=data["name"], phone=phone)
+    bid = add_booking(user_id=user_id, service=data["service"], year=yr, month=mon, day=day, time=data["time"], name=data["name"], phone=phone, duration_min=dur)
     b = get_booking(bid)
     # Применяем промокод
     voucher_line = ""
