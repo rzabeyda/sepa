@@ -62,15 +62,13 @@ def get_reviews():
 # логику, но значения должны совпадать 1-в-1, иначе сайт и бот будут расходиться.
 WORK_SCHEDULE = {
     0: (17, 19),  # Понедельник
-    1: (17, 19),  # Вторник
     2: (17, 19),  # Среда
-    3: (17, 19),  # Четверг
     4: (17, 19),  # Пятница
     5: (12, 18),  # Суббота — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
-    6: (12, 18),  # Воскресенье — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
+    # Вторник, четверг и воскресенье — не рабочие дни (нет в словаре).
 }
 
-# По субботам и воскресеньям запись возможна только на эти 4 времени — никакого
+# По субботам запись возможна только на эти 4 времени — никакого
 # почасового диапазона, как в будни. Совпадает 1-в-1 с bot.py.
 WEEKEND_FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
 _WEEKEND_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in WEEKEND_FIXED_SLOTS)
@@ -84,7 +82,7 @@ def get_slots(year, month, day, dur_min):
     if weekday not in WORK_SCHEDULE:
         return []
     start_hour, end_hour = WORK_SCHEDULE[weekday]
-    is_weekend_fixed = weekday in (5, 6)
+    is_weekend_fixed = weekday == 5
     con = db()
     if con.execute("SELECT date FROM schedule WHERE type='day' AND date=?", (key,)).fetchone():
         con.close(); return []
@@ -175,7 +173,7 @@ def api_book(b: BookingIn):
         (b.user_id, b.service, b.year, b.month, b.day, b.time, b.name, b.phone, b.dur_min))
     con.commit(); con.close()
     svc = next((s for s in get_services() if s["name"] == b.service), None)
-    price = svc["price"] if svc else "?"
+    price = "50€" if b.dur_min == 90 else (svc["price"] if svc else "?")
     notify_admins(
         "🔔 Новая бронь (с сайта)!\n\n"
         f"💆 {b.service}\n"

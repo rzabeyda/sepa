@@ -135,7 +135,7 @@
   .cal-day.available:active{transform:scale(.85);background:var(--bg3);}
   .cal-day.available{color:var(--text);}
   .cal-day.selected{background:var(--accent);color:#000;font-weight:700;}
-  .cal-day.unavailable{color:#2a2a2a;pointer-events:none;}
+  .cal-day.unavailable{color:var(--muted);opacity:.3;background:var(--bg2);pointer-events:none;}
   .cal-day.today{border-color:var(--accent);}
   .cal-day.empty{pointer-events:none;}
 
@@ -263,11 +263,11 @@
   <div class="step" id="step1">
     <p class="step-title" data-t="duration">Kestus</p>
     <div class="dur-row">
-      <button class="dur-btn selected" id="dur60" onclick="selectDur(60,30)">
+      <button class="dur-btn selected" id="dur60" onclick="selectDur(60,35)">
         <div style="font-size:18px;margin-bottom:4px;font-weight:700">60 <span data-t="min">min</span></div>
         <div style="color:var(--accent);font-weight:700">35€</div>
       </button>
-      <button class="dur-btn" id="dur90" onclick="selectDur(90,40)">
+      <button class="dur-btn" id="dur90" onclick="selectDur(90,50)">
         <div style="font-size:18px;margin-bottom:4px;font-weight:700">90 <span data-t="min">min</span></div>
         <div style="color:var(--accent);font-weight:700">50€</div>
       </button>
@@ -597,7 +597,7 @@ function renderServicesHTML(){
 }
 
 function bookService(i){goBook();setTimeout(()=>selectService(i),150);}
-let selService=null,selDurMin=60,selPrice=30;
+let selService=null,selDurMin=60,selPrice=35;
 function selectService(i){
   document.querySelectorAll('#book-services .service-card').forEach(c=>c.classList.remove('selected'));
   const el=document.getElementById('svc-'+i); if(el) el.classList.add('selected');
@@ -621,7 +621,7 @@ function goStep(n){
   if(n===3){updateSummary(); setTimeout(()=>document.getElementById('inp-name').focus(),300);}
 }
 function resetBook(){
-  selService=null;selDurMin=60;selPrice=30;selYear=selMonth=selDay=selTime=null;
+  selService=null;selDurMin=60;selPrice=35;selYear=selMonth=selDay=selTime=null;
   const btn=document.getElementById('btn-confirm');
   if(btn){btn.disabled=false;btn.textContent=t('confirm');}
   goStep(0);

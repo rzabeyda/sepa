@@ -720,15 +720,13 @@ def get_end_time(start_slot, dur_min):
 # Расписание работы по дням недели (0=Пн ... 6=Вс)
 WORK_SCHEDULE = {
     0: (17, 19),  # Понедельник
-    1: (17, 19),  # Вторник
     2: (17, 19),  # Среда
-    3: (17, 19),  # Четверг
     4: (17, 19),  # Пятница
     5: (12, 18),  # Суббота — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
-    6: (12, 18),  # Воскресенье — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
+    # Вторник, четверг и воскресенье — не рабочие дни (нет в словаре).
 }
 
-# По субботам и воскресеньям запись возможна только на эти 4 времени — никакого
+# По субботам запись возможна только на эти 4 времени — никакого
 # почасового диапазона, как в будни. Совпадает 1-в-1 с api.py.
 WEEKEND_FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
 _WEEKEND_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in WEEKEND_FIXED_SLOTS)
@@ -742,7 +740,7 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     if weekday not in WORK_SCHEDULE:
         return []
     start_hour, end_hour = WORK_SCHEDULE[weekday]
-    is_weekend_fixed = weekday in (5, 6)
+    is_weekend_fixed = weekday == 5
 
     manual_blocked = set()
     for slot in get_blocked_slots_for_date(key):
@@ -788,6 +786,7 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     return available
 
 DAYS_RU = {0: "в понедельник", 1: "во вторник", 2: "в среду", 3: "в четверг", 4: "в пятницу", 5: "в субботу", 6: "в воскресенье"}
+WEEKDAY_NAMES_RU = {0: "Понедельник", 1: "Вторник", 2: "Среда", 3: "Четверг", 4: "Пятница", 5: "Суббота", 6: "Воскресенье"}
 
 def time_until_booking(b) -> str:
     """Возвращает строку типа '⏳ Через 2 дня, в пятницу 21 Марта в 14:00'"""
@@ -828,7 +827,7 @@ def format_booking(b, idx=None, username=None):
 def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     has_booking = bool(user_id and get_user_bookings(user_id))
     broni_btn = KeyboardButton(text="✅ Брони") if has_booking else KeyboardButton(text="🗓 Брони")
-    row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 ПРОМОКОД")]
+    row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 Промокод")]
     row2 = [KeyboardButton(text="💬 Написать"), KeyboardButton(text="👱‍♀️ Коллеги"), KeyboardButton(text="⭐ Отзывы")]
     buttons = [row1, row2]
     if is_admin: buttons.append([KeyboardButton(text="🔐 Админка")])
@@ -891,8 +890,7 @@ def booking_list_kb(user_id):
 def make_calendar_url(b) -> str:
     """Генерирует ссылку на создание события в Google Calendar."""
     try:
-        svc = get_service(b["service"])
-        dur = duration_minutes(svc)
+        dur = booking_duration(b)
         start = datetime(b["year"], b["month"], b["day"],
                          int(b["time"].split(":")[0]), int(b["time"].split(":")[1]))
         end = start + timedelta(minutes=dur)
@@ -1101,8 +1099,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
         photo=photo,
         caption=(
             "*Сергей — мастер массажа в Таллине* 💆\n\n"
-            "⏱ Пн–Пт: 17:00–19:00\n"
-            "⏱ Сб/Вс: запись на 12:00, 14:00, 16:00, 18:00\n\n"
+            "⏱ Пн, Ср, Пт: 17:00–19:00\n"
+            "⏱ Сб: запись на 12:00, 14:00, 16:00, 18:00\n\n"
             "Запишитесь онлайн — это займёт 1 минуту 👇"
         ),
         parse_mode="Markdown",
@@ -1275,7 +1273,7 @@ async def friends_back(call: types.CallbackQuery):
     await call.message.answer("💆 Коллеги Сергея\n\nВыберите мастера 👇", reply_markup=kb)
     await call.answer()
 
-@dp.message(F.text == "🎁 ПРОМОКОД")
+@dp.message(F.text == "🎁 Промокод")
 async def btn_referral(message: types.Message):
     user_id = message.from_user.id
     ref_link = f"https://t.me/{(await bot.get_me()).username}?start=ref_{user_id}"
@@ -1598,7 +1596,8 @@ async def day_choice(call: types.CallbackQuery, state: FSMContext):
     day=int(call.data.split(":")[1]); data=await state.get_data()
     year=data.get("year",now_tallinn().year); month=data.get("month")
     await state.update_data(day=day); svc=get_service(data.get("service","")); dur=duration_minutes(svc)
-    await call.message.answer(f"✅ Вы выбрали: {day} {MONTHS[month]}\n\nВыберите удобное время:",
+    weekday_name = WEEKDAY_NAMES_RU[datetime(year, month, day).weekday()]
+    await call.message.answer(f"✅ Вы выбрали: {day} {MONTHS[month]}, {weekday_name}\n\nВыберите удобное время:",
         reply_markup=time_kb(year,month,day,new_dur_min=dur))
     await state.set_state(Booking.time); await call.answer()
 
@@ -1727,7 +1726,7 @@ async def admin_view_booking(call: types.CallbackQuery):
     await call.message.answer(text, reply_markup=kb); await call.answer()
 
 @dp.callback_query(F.data.startswith("admin_"))
-async def admin_actions(call: types.CallbackQuery):
+async def admin_actions(call: types.CallbackQuery, state: FSMContext):
     if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
     action=call.data
     if action=="admin_all":
@@ -2608,7 +2607,7 @@ async def reminder_loop():
                 if today_b:
                     text=f"☀️ Доброе утро! Сегодня {now.day} {MONTHS_GEN[now.month]}:\n\n"
                     for b in today_b:
-                        svc2=get_service(b["service"]); dur2=svc2["duration"] if svc2 else ""
+                        dur2=f"{booking_duration(b)} мин"
                         text+=f"⏱ {b['time']} — 💅 {b['service']} (~{dur2})\n👤 {b['name']} 📞 {b['phone']}\n\n"
                     for _aid in ADMIN_IDS:
                         try: await bot.send_message(_aid, text)
