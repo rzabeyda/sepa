@@ -1237,10 +1237,25 @@ async def wr_text(message: types.Message, state: FSMContext):
     await _save_write_review(message, state, text)
     await message.answer("🙏 Спасибо за отзыв!")
 
+GALLERY_VIDEOS = ["massage01.mp4"]   # добавляйте сюда новые файлы из папки videos/
+_gallery_file_ids = {}
+
 # "👱‍♀️ Коллеги" оставлен в наборе — у тех, у кого ещё старая клавиатура, кнопка тоже покажет галерею
 @dp.message(F.text.in_({"🖼 Галерея", "👱‍♀️ Коллеги"}))
 async def btn_gallery(message: types.Message):
-    await message.answer("🖼 *Галерея*\n\nФото скоро появятся 💆", parse_mode="Markdown")
+    # Видео лежат в videos/ (те же файлы, что и на сайте). file_id кэшируем: после первой отправки Telegram берёт видео у себя.
+    sent = 0
+    for name in GALLERY_VIDEOS:
+        path = os.path.join(BASE_DIR, "videos", name)
+        if name not in _gallery_file_ids and not os.path.isfile(path):
+            continue
+        media = _gallery_file_ids.get(name) or FSInputFile(path)
+        msg = await message.answer_video(media, supports_streaming=True)
+        if name not in _gallery_file_ids and msg.video:
+            _gallery_file_ids[name] = msg.video.file_id
+        sent += 1
+    if not sent:
+        await message.answer("🖼 *Галерея*\n\nФото скоро появятся 💆", parse_mode="Markdown")
 
 @dp.callback_query(F.data.startswith("friend_view:"))
 async def friend_view(call: types.CallbackQuery):
