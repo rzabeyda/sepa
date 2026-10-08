@@ -202,7 +202,7 @@
   .empty-state{text-align:center;color:var(--muted);padding:56px 20px;font-size:14px;line-height:1.8;}
 
   /* ── FOOTER ──────────────────────────────────────────── */
-  .site-footer{max-width:1160px;margin:72px auto 0;padding:36px 20px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr;gap:26px;}
+  .site-footer{max-width:1160px;margin:56px auto 0;padding:30px 20px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr;gap:16px;}
   .site-footer .brand b{font-size:22px;}
   .footer-col .fact-label{margin-bottom:6px;}
   .footer-col a,.footer-col div:not(.fact-label){color:var(--text);font-size:14.5px;text-decoration:none;line-height:1.6;}
@@ -229,8 +229,8 @@
 
     .slots-grid{grid-template-columns:repeat(4,1fr);}
     .reviews-cols{column-count:2;}
-    .site-footer{grid-template-columns:1.3fr 1fr 1fr;align-items:start;}
-    .footer-copy{grid-column:1/-1;padding-top:8px;}
+    .site-footer{grid-template-columns:1fr auto;align-items:center;}
+    .footer-copy{grid-column:auto;padding-top:0;}
   }
 
   @media(hover:hover){
@@ -468,14 +468,6 @@
   <footer class="site-footer">
     <div class="footer-col">
       <a class="brand" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;"><b>SKF</b><span>Massage</span></a>
-    </div>
-    <div class="footer-col">
-      <div class="fact-label" data-t="biz_address">Aadress</div>
-      <a href="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn" target="_blank" rel="noopener">Linnamäe tee 24, Tallinn</a>
-    </div>
-    <div class="footer-col">
-      <div class="fact-label" data-t="phone_label">Telefon</div>
-      <a href="tel:+37253730882">+372 53 730 882</a>
     </div>
     <div class="footer-copy">© SKF-MASSAGE OÜ</div>
   </footer>
