@@ -209,7 +209,7 @@
   .footer-col a:hover{color:var(--gold2);}
   .footer-partner img{display:block;width:96px;height:96px;object-fit:contain;mix-blend-mode:screen;opacity:.92;transition:opacity .25s,transform .35s cubic-bezier(.2,.7,.2,1);}
   .footer-partner a:hover img{opacity:1;transform:scale(1.06);}
-  .footer-copy{color:var(--muted);font-size:12px;letter-spacing:.04em;}
+  .footer-copy{text-align:center;color:var(--muted);font-size:12px;letter-spacing:.04em;}
 
   /* ── ≥ 700px ─────────────────────────────────────────── */
   @media(min-width:700px){
@@ -229,8 +229,7 @@
 
     .slots-grid{grid-template-columns:repeat(4,1fr);}
     .reviews-cols{column-count:2;}
-    .site-footer{grid-template-columns:1fr auto;align-items:center;}
-    .footer-copy{grid-column:auto;padding-top:0;}
+
   }
 
   @media(hover:hover){
@@ -464,9 +463,6 @@
   </div>
 
   <footer class="site-footer">
-    <div class="footer-col">
-      <a class="brand" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;"><b>SKF</b><span>Massage</span></a>
-    </div>
     <div class="footer-copy">© SKF-MASSAGE OÜ</div>
   </footer>
 </div>
