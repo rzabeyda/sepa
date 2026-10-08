@@ -368,7 +368,8 @@
   .lb-next{right:14px;top:50%;margin-top:-23px;}
 
   /* ── SOCIAL ICONS ────────────────────────────────────── */
-  .social-row{display:flex;gap:12px;margin-top:6px;}
+  .social-row{display:flex;justify-content:center;gap:14px;margin-top:6px;}
+  @media(min-width:900px){.social-row{justify-content:flex-start;gap:12px;}}
   .social{width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:rgba(255,255,255,.03);display:grid;place-items:center;color:var(--gold2);text-decoration:none;transition:border-color .25s,background .25s,transform .25s cubic-bezier(.2,.7,.2,1),color .25s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
   .social svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
   .social svg .fill{fill:currentColor;stroke:none;}
