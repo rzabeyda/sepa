@@ -2,274 +2,436 @@
 <html lang="et">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#070707">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="SKF Massage — professional massage in Tallinn. Online booking: classic, sports, Thai, aroma and lymphatic drainage massage.">
 <title data-t="page_title">Sergei — massöör Tallinnas</title>
 <link rel="icon" href="/images/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon-180.png">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#090909;--bg2:#111;--bg3:#181818;--accent:#c8a96e;--text:#e8e8e8;--muted:#666;--border:#1e1e1e;--r:14px;}
+  :root{
+    --bg:#070707;--bg2:#101010;--bg3:#161616;
+    --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15);--border:rgba(255,255,255,.09);
+    --gold:#c0a068;--gold2:#dcc592;--accent:#c0a068;--gold-dim:rgba(192,160,104,.12);
+    --text:#ece7df;--muted:#8f897f;--r:14px;
+    --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+    --tabbar:68px;
+  }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  html,body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;min-height:100vh;overscroll-behavior:none;}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;color-scheme:dark;}
+  html,body{background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,sans-serif;font-size:15px;line-height:1.5;min-height:100vh;overscroll-behavior:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--gold2);outline-offset:3px;border-radius:6px;}
+  ::selection{background:var(--gold);color:#120d04;}
 
-  /* NAV */
-  nav{position:sticky;top:0;z-index:100;background:rgba(9,9,9,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;}
-  .nav-tabs{display:flex;flex:1;}
-  nav button{flex:1;min-width:0;padding:14px 1px;background:none;border:none;color:var(--muted);font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;letter-spacing:0;cursor:pointer;transition:color .2s;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  nav button.active{color:var(--accent);}
-  nav button.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:2px;}
-  nav button:active{background:rgba(200,169,110,.07);}
+  /* ── NAV ─────────────────────────────────────────────── */
+  nav{position:sticky;top:0;z-index:100;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
+  nav::before{content:'';position:absolute;inset:0;z-index:-1;background:rgba(7,7,7,.78);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-bottom:1px solid var(--line);}
+  .brand{display:flex;align-items:baseline;gap:9px;text-decoration:none;font-family:var(--serif);text-transform:uppercase;color:#fff;}
+  .brand b{font-size:25px;font-weight:600;letter-spacing:.14em;}
+  .brand span{font-size:12px;font-weight:500;letter-spacing:.34em;color:var(--gold2);font-family:'Manrope',sans-serif;}
 
-  /* LANG SELECTOR */
-  .lang-flags{display:flex;gap:2px;padding:0 6px;flex-shrink:0;}
-  .lang-flag{background:none;border:1px solid transparent;border-radius:4px;line-height:0;padding:2px;cursor:pointer;opacity:.45;transition:opacity .2s,border-color .2s;-webkit-tap-highlight-color:transparent;}
+  .nav-tabs{position:fixed;left:0;right:0;bottom:0;z-index:100;display:flex;padding-bottom:env(safe-area-inset-bottom);background:rgba(10,10,10,.92);backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);border-top:1px solid var(--line);}
+  .nav-tabs button{flex:1;min-width:0;height:var(--tabbar);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:none;color:var(--muted);font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.05em;cursor:pointer;position:relative;transition:color .2s;}
+  .nav-tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+  .nav-tabs button span{max-width:100%;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nav-tabs button.active{color:var(--gold2);}
+  .nav-tabs button.active::before{content:'';position:absolute;top:-1px;left:32%;right:32%;height:2px;border-radius:2px;background:var(--gold);}
+
+  .lang-flags{display:flex;gap:6px;}
+  .lang-flag{background:none;border:1px solid var(--line2);border-radius:6px;line-height:0;padding:4px 5px;cursor:pointer;opacity:.5;transition:opacity .2s,border-color .2s,background .2s;}
   .lang-flag img{width:20px;height:14px;display:block;border-radius:2px;object-fit:cover;}
-  .lang-flag.active{opacity:1;border-color:var(--accent);}
-  .lang-flag:active{opacity:1;}
+  .lang-flag:hover{opacity:.85;}
+  .lang-flag.active{opacity:1;border-color:var(--gold);background:var(--gold-dim);}
 
-  .page{display:none;padding:0 0 100px;animation:fadeIn .22s ease;}
-  .page.active{display:block;}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  /* ── PAGES ───────────────────────────────────────────── */
+  .page{display:none;padding:0 0 calc(var(--tabbar) + 40px + env(safe-area-inset-bottom));min-height:calc(100vh - 60px);}
+  .page.active{display:block;animation:fadeIn .35s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-  /* HERO */
-  .hero{position:relative;height:260px;overflow:hidden;}
-  .hero img{width:100%;height:100%;object-fit:contain;object-position:center center;background:#090909;}
-  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 25%,rgba(9,9,9,.88) 100%);}
-  .hero-text{position:absolute;bottom:20px;left:18px;right:18px;z-index:1;}
-  .hero-text h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;color:#fff;margin-bottom:4px;}
-  .hero-text p{color:rgba(255,255,255,.6);font-size:13px;font-weight:300;}
-  .hero-side{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:170px;display:none;}
-  .hero-side-left{left:28px;text-align:left;}
-  .hero-side-right{right:28px;text-align:right;}
-  .hero-side-label{font-family:'Manrope',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px;}
-  .hero-side-value{font-family:'Manrope',sans-serif;font-size:13px;color:#fff;font-weight:500;line-height:1.4;}
-  .biz-strip{padding:9px 16px;font-size:10.5px;color:var(--muted);text-align:center;line-height:1.7;background:var(--bg2);border-bottom:1px solid var(--border);}
-  .biz-strip span{color:var(--text);}
-  @media(min-width:640px){
-    .hero{height:360px;}
-    .hero-side{display:block;}
-    #biz-info-card{display:none;}
-  }
-  @media(max-width:639px){
-    #page-home .section{padding-left:0;padding-right:0;}
-    .svc-list-wrap{padding-left:0!important;padding-right:0!important;}
-  }
+  .section{max-width:1160px;margin:0 auto;padding:44px 20px 0;}
+  .eyebrow{display:flex;align-items:center;gap:12px;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--gold2);}
+  .eyebrow::before{content:'';width:28px;height:1px;background:var(--gold);}
+  .section-title{font-family:var(--serif);font-size:38px;font-weight:400;line-height:1.05;color:#fff;margin-bottom:22px;letter-spacing:-.005em;}
 
-  .section{padding:16px 16px 0;}
-  .section-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;color:#fff;margin-bottom:14px;}
+  /* ── HERO ────────────────────────────────────────────── */
+  .hero{position:relative;overflow:hidden;min-height:min(88svh,780px);display:flex;align-items:flex-end;}
+  .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(60% 50% at 75% 22%,rgba(192,160,104,.16),transparent 70%);pointer-events:none;}
+  .hero-photo{position:absolute;inset:0;}
+  .hero-photo img{width:100%;height:100%;object-fit:cover;object-position:50% 10%;display:block;}
+  .hero-photo::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,7,7,.35) 0%,rgba(7,7,7,0) 28%,rgba(7,7,7,.72) 66%,var(--bg) 100%);}
+  .hero-inner{position:relative;z-index:1;width:100%;max-width:1160px;margin:0 auto;padding:0 20px 34px;}
+  .hero h1{font-family:var(--serif);font-size:clamp(58px,17vw,84px);font-weight:400;line-height:.92;letter-spacing:-.015em;color:#fff;margin:18px 0 12px;}
+  .hero-grade{font-size:15px;font-weight:300;letter-spacing:.04em;color:rgba(236,231,223,.78);}
+  .hero-cta{margin-top:28px;display:flex;flex-direction:column;gap:12px;}
 
-  /* CONTACT BTNS */
-  .contact-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-  .contact-btn{display:flex;align-items:center;gap:12px;padding:15px 16px;border-radius:var(--r);border:1px solid var(--border);text-decoration:none;cursor:pointer;transition:transform .12s,opacity .15s,border-color .2s;-webkit-tap-highlight-color:transparent;background:var(--bg2);}
-  .contact-btn:active{transform:scale(.97);opacity:.85;}
-  .contact-btn.tg{border-color:rgba(38,121,185,.3);background:rgba(38,121,185,.08);}
-  .contact-btn.phone{border-color:rgba(200,169,110,.25);background:rgba(200,169,110,.05);}
-  .contact-btn.bot{border-color:rgba(38,121,185,.3);background:rgba(38,121,185,.08);}
-  .contact-btn .ico{width:28px;height:28px;flex-shrink:0;object-fit:contain;}
-  .contact-btn .ico-emoji{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;}
-  .contact-btn .label{font-weight:600;font-size:14px;color:#fff;}
+  .contact-btns{display:flex;flex-wrap:wrap;gap:10px;}
+  .contact-btn{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 18px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--text);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.03em;cursor:pointer;transition:border-color .2s,background .2s,transform .12s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+  .contact-btn svg{width:18px;height:18px;fill:none;stroke:var(--gold2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+  .contact-btn:active{transform:scale(.97);}
+  .contact-btn .label{color:inherit;}
 
-  /* SERVICE CARDS */
-  .service-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;min-height:96px;display:flex;align-items:center;cursor:pointer;transition:border-color .2s,transform .12s,background .15s;}
-  .service-card:active{transform:scale(.97);background:var(--bg3);}
-  .service-card.selected{border-color:var(--accent);}
-  .service-card img{width:80px;height:80px;object-fit:cover;flex-shrink:0;}
-  .service-card .info{padding:12px 14px;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
-  .service-card .name{font-weight:600;color:#fff;margin-bottom:3px;font-size:14px;overflow-wrap:break-word;word-break:break-word;}
-  .service-card .meta{color:var(--muted);font-size:12px;}
-  .service-card .price{color:var(--accent);font-weight:700;font-size:15px;margin-top:4px;}
-  .service-card .dur-line{color:var(--muted);font-size:11.5px;margin-top:6px;}
-  .service-card .price-line{color:var(--accent);font-weight:600;font-size:12px;margin-top:2px;}
-  .svc-info-btn{background:none;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:50%;font-size:14px;line-height:1;cursor:pointer;flex-shrink:0;align-self:center;margin-right:12px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,color .2s;-webkit-tap-highlight-color:transparent;}
-  .svc-info-btn:active{border-color:var(--accent);color:var(--accent);}
+  /* ── FACTS ───────────────────────────────────────────── */
+  .facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .fact{padding:20px 4px 20px 0;}
+  .fact:nth-child(even){padding-left:18px;border-left:1px solid var(--line);}
+  .fact:nth-child(n+3){border-top:1px solid var(--line);}
+  .fact-label{font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .fact-value{font-family:var(--serif);font-size:21px;font-weight:500;color:#fff;line-height:1.2;}
+
+  /* ── SERVICE CARDS ───────────────────────────────────── */
+  .svc-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+  .service-card{position:relative;display:flex;align-items:stretch;background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;overflow:hidden;cursor:pointer;min-height:108px;transition:border-color .25s,transform .15s,box-shadow .25s;}
+  .service-card:active{transform:scale(.985);}
+  .service-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim),0 12px 40px -16px rgba(192,160,104,.35);}
+  .service-card img{width:108px;flex-shrink:0;object-fit:cover;display:block;transition:transform .6s cubic-bezier(.2,.7,.2,1);}
+  .service-card .info{padding:16px 6px 16px 18px;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
+  .service-card .name{font-family:var(--serif);font-size:23px;font-weight:500;color:#fff;line-height:1.1;margin-bottom:8px;overflow-wrap:break-word;word-break:break-word;}
+  .service-card .dur-line{color:var(--muted);font-size:12px;letter-spacing:.04em;}
+  .service-card .price-line{color:var(--gold2);font-weight:600;font-size:13.5px;margin-top:3px;letter-spacing:.02em;}
+  .svc-info-btn{background:none;border:1px solid var(--line2);color:var(--muted);width:30px;height:30px;border-radius:50%;font-size:14px;line-height:1;cursor:pointer;flex-shrink:0;align-self:center;margin-right:14px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,color .2s;}
+  .svc-info-btn:active{border-color:var(--gold);color:var(--gold2);}
   .svc-desc-inline{display:none;}
-  @media(min-width:640px){
-    .svc-info-btn{display:none;}
-    .service-card .info{flex:0 0 220px;}
-    .svc-desc-inline{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;align-self:center;border-left:1px solid var(--border);margin:12px 10px 12px 16px;padding-left:18px;}
-    .svc-desc-text{color:var(--muted);font-size:13px;line-height:1.65;}
-  }
 
-  /* MODAL */
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1000;align-items:center;justify-content:center;padding:24px;}
+  /* ── MODAL ───────────────────────────────────────────── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;padding:24px;}
   .modal-overlay.open{display:flex;}
-  .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:22px 20px;max-width:380px;width:100%;max-height:75vh;overflow-y:auto;position:relative;animation:popIn .22s cubic-bezier(.175,.885,.32,1.275);}
-  .modal-close{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .2s,color .2s;-webkit-tap-highlight-color:transparent;}
-  .modal-close:active{background:var(--bg3);color:var(--accent);}
-  .modal-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:400;color:#fff;margin-bottom:10px;padding-right:22px;}
-  .modal-body{color:var(--muted);font-size:13.5px;line-height:1.7;white-space:pre-line;}
+  .modal-box{background:var(--bg2);border:1px solid var(--line2);border-radius:22px;padding:30px 26px 26px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;position:relative;animation:popIn .28s cubic-bezier(.2,.8,.2,1);box-shadow:0 30px 80px -20px rgba(0,0,0,.8);}
+  .modal-close{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .2s,color .2s;}
+  .modal-close:hover,.modal-close:active{background:var(--bg3);color:var(--gold2);}
+  .modal-title{font-family:var(--serif);font-size:28px;font-weight:500;line-height:1.1;color:#fff;margin-bottom:14px;padding-right:26px;}
+  .modal-body{color:var(--muted);font-size:14px;line-height:1.75;white-space:pre-line;}
 
-  /* BTN */
-  .btn{width:100%;padding:16px;border:none;border-radius:var(--r);font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;letter-spacing:.03em;cursor:pointer;transition:transform .12s,opacity .15s,box-shadow .2s;-webkit-tap-highlight-color:transparent;}
-  .btn:active{transform:scale(.97);opacity:.88;}
-  .btn-primary{background:var(--accent);color:#0a0a0a;box-shadow:0 4px 18px rgba(200,169,110,.18);}
-  .btn-outline{background:none;border:1px solid var(--border);color:var(--muted);margin-top:10px;}
-  .btn-outline:active{border-color:var(--accent);color:var(--accent);}
+  /* ── BUTTONS ─────────────────────────────────────────── */
+  .btn{width:100%;padding:18px 28px;border:none;border-radius:12px;font-family:'Manrope',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:transform .12s,opacity .15s,box-shadow .25s,border-color .2s,color .2s,filter .2s;}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.5;pointer-events:none;}
+  .btn-primary{background:linear-gradient(180deg,#d2b57d,#b8975a);color:#120d04;box-shadow:0 10px 34px -10px rgba(192,160,104,.55),inset 0 1px 0 rgba(255,255,255,.25);}
+  .btn-outline{background:transparent;border:1px solid var(--line2);color:var(--text);margin-top:12px;}
+  .btn-outline:active{border-color:var(--gold);color:var(--gold2);}
 
-  /* RELAX DIVIDER */
-  .relax-divider{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
-  .relax-divider::before,.relax-divider::after{content:'';flex:1;height:1px;background:var(--border);}
-  .relax-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:#fff;white-space:nowrap;}
+  /* ── SECTION HEAD / RELAX ────────────────────────────── */
+  .relax-head{margin-bottom:26px;}
+  .relax-title{display:block;font-family:var(--serif);font-size:44px;font-weight:400;font-style:italic;line-height:1;color:#fff;margin-top:14px;letter-spacing:-.005em;}
 
-  /* STEPS */
-  .step{display:none;padding:20px 16px 0;}
-  .step.active{display:block;}
-  .step-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:#fff;margin-bottom:16px;}
+  /* ── STEPS ───────────────────────────────────────────── */
+  .step{display:none;max-width:700px;margin:0 auto;padding:36px 20px 0;}
+  .step.active{display:block;animation:fadeIn .3s ease;}
+  .step-title{font-family:var(--serif);font-size:36px;font-weight:400;line-height:1.05;color:#fff;margin-bottom:22px;}
+  #book-services{display:flex;flex-direction:column;gap:12px;}
 
-  /* DUR */
-  .dur-row{display:flex;gap:10px;margin-bottom:20px;}
-  .dur-btn{flex:1;padding:14px 10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);border-radius:var(--r);font-family:'Manrope',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;text-align:center;-webkit-tap-highlight-color:transparent;}
-  .dur-btn:active{transform:scale(.95);}
-  .dur-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(200,169,110,.08);}
+  .dur-row{display:flex;gap:12px;margin-bottom:24px;}
+  .dur-btn{flex:1;padding:22px 10px;border:1px solid var(--line);background:linear-gradient(180deg,var(--bg3),var(--bg2));color:var(--muted);border-radius:18px;font-family:'Manrope',sans-serif;font-size:13px;cursor:pointer;transition:border-color .2s,background .2s,color .2s,transform .12s;text-align:center;}
+  .dur-btn:active{transform:scale(.97);}
+  .dur-btn.selected{border-color:var(--gold);color:var(--text);background:var(--gold-dim);}
 
-  /* CAL */
-  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-  .cal-header span{font-size:15px;font-weight:600;color:#fff;}
-  .cal-nav{background:var(--bg2);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
-  .cal-nav:active{border-color:var(--accent);transform:scale(.9);}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px;}
-  .cal-day-name{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;font-weight:600;}
-  .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13px;cursor:pointer;transition:all .15s;border:1px solid transparent;-webkit-tap-highlight-color:transparent;}
-  .cal-day.available:active{transform:scale(.85);background:var(--bg3);}
-  .cal-day.available{color:var(--text);}
-  .cal-day.selected{background:var(--accent);color:#000;font-weight:700;}
-  .cal-day.unavailable{color:var(--muted);opacity:.3;background:var(--bg2);pointer-events:none;}
-  .cal-day.today{border-color:var(--accent);}
+  /* ── CALENDAR ────────────────────────────────────────── */
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin:0 auto 16px;max-width:460px;}
+  .cal-header span{font-family:var(--serif);font-size:26px;font-weight:500;color:#fff;}
+  .cal-nav{background:transparent;border:1px solid var(--line2);color:var(--text);width:40px;height:40px;border-radius:50%;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s,transform .1s;}
+  .cal-nav:hover{border-color:var(--gold);color:var(--gold2);}
+  .cal-nav:active{transform:scale(.92);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:0 auto 26px;max-width:460px;}
+  .cal-day-name{text-align:center;font-size:10.5px;color:var(--muted);padding:6px 0;font-weight:600;letter-spacing:.14em;text-transform:uppercase;}
+  .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s,transform .12s;border:1px solid transparent;}
+  .cal-day.available{color:var(--text);background:rgba(255,255,255,.04);}
+  .cal-day.available:hover{border-color:var(--gold);}
+  .cal-day.available:active{transform:scale(.88);}
+  .cal-day.selected{background:var(--gold);color:#120d04;font-weight:700;}
+  .cal-day.unavailable{color:var(--muted);opacity:.28;pointer-events:none;}
+  .cal-day.today{border-color:var(--gold);}
   .cal-day.empty{pointer-events:none;}
 
-  /* SLOTS */
-  .slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
-  .slot-btn{padding:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:var(--r);font-family:'Manrope',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;}
-  .slot-btn:active{transform:scale(.93);}
-  .slot-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(200,169,110,.08);}
+  .slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:26px;}
+  .slot-btn{padding:14px 8px;border:1px solid var(--line);background:linear-gradient(180deg,var(--bg3),var(--bg2));color:var(--text);border-radius:12px;font-family:'Manrope',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:border-color .15s,background .15s,color .15s,transform .12s;text-align:center;}
+  .slot-btn:hover{border-color:var(--gold);}
+  .slot-btn:active{transform:scale(.94);}
+  .slot-btn.selected{border-color:var(--gold);color:#120d04;background:var(--gold);font-weight:700;}
+  #slots-section>p{font-family:var(--serif)!important;font-size:24px!important;font-weight:500;}
 
-  /* FORM */
-  .form-group{margin-bottom:14px;}
-  .form-group label{display:block;color:var(--muted);font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;font-weight:600;}
-  .form-group input,.form-group select,.form-group textarea{width:100%;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
-  .form-group textarea{resize:vertical;min-height:70px;}
+  /* ── FORM ────────────────────────────────────────────── */
+  .form-group{margin-bottom:16px;}
+  .form-group label{display:block;color:var(--muted);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:9px;font-weight:600;}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:16px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;color:var(--text);font-family:'Manrope',sans-serif;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s;}
+  .form-group textarea{resize:vertical;min-height:90px;}
   .form-group select{appearance:none;-webkit-appearance:none;}
-  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);}
-  .form-group input.error,.form-group textarea.error{border-color:#e05555;animation:shake .3s ease;}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim);}
+  .form-group input.error,.form-group textarea.error{border-color:#d9534f;animation:shake .3s ease;}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 
-  /* SUMMARY */
-  .summary{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;}
-  .summary-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  /* ── SUMMARY ─────────────────────────────────────────── */
+  .summary{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:8px 20px;margin-bottom:24px;}
+  .summary-row{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);font-size:14px;}
   .summary-row:last-child{border-bottom:none;}
   .summary-row .label{color:var(--muted);}
-  .summary-row .value{color:var(--text);font-weight:600;}
+  .summary-row .value{color:var(--text);font-weight:600;text-align:right;}
 
-  /* REVIEW */
-  .review-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;}
-  .review-stars{color:var(--accent);font-size:13px;margin-bottom:6px;}
-  .review-text{color:var(--text);font-size:13px;line-height:1.65;margin-bottom:8px;}
-  .review-meta{color:var(--muted);font-size:11px;font-weight:500;}
-  .review-form-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;}
-  .star-picker{display:flex;gap:6px;font-size:28px;}
-  .star-picker span{color:var(--border);cursor:pointer;transition:color .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
-  .star-picker span:active{transform:scale(.9);}
-  .star-picker span.active{color:var(--accent);}
+  /* ── REVIEWS ─────────────────────────────────────────── */
+  .reviews-cols{column-gap:16px;}
+  .review-card{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px;break-inside:avoid;}
+  .review-stars{color:var(--gold);font-size:15px;letter-spacing:3px;margin-bottom:12px;}
+  .review-text{font-family:var(--serif);color:var(--text);font-size:19px;line-height:1.45;margin-bottom:14px;}
+  .review-meta{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;}
+  .review-form-box{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:22px;}
+  .star-picker{display:flex;gap:8px;font-size:32px;line-height:1;}
+  .star-picker span{color:rgba(255,255,255,.14);cursor:pointer;transition:color .15s,transform .1s;}
+  .star-picker span:active{transform:scale(.88);}
+  .star-picker span.active{color:var(--gold);}
 
-  /* BOOKING CARD */
-  .booking-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px;}
-  .booking-card .svc{font-weight:600;color:#fff;font-size:15px;margin-bottom:6px;}
-  .booking-card .detail{color:var(--muted);font-size:12px;margin-bottom:3px;}
+  /* ── BOOKINGS ────────────────────────────────────────── */
+  .booking-card{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:12px;}
+  .booking-card .svc{font-family:var(--serif);font-weight:500;color:#fff;font-size:24px;line-height:1.1;margin-bottom:10px;}
+  .booking-card .detail{color:var(--muted);font-size:13.5px;margin-bottom:4px;}
 
-  /* SUCCESS */
-  .success-screen{text-align:center;padding:50px 20px;}
-  .success-icon{font-size:54px;margin-bottom:20px;animation:popIn .4s cubic-bezier(.175,.885,.32,1.275);}
-  @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
-  .success-screen h2{font-family:'Playfair Display',serif;font-size:26px;font-weight:400;color:#fff;margin-bottom:8px;}
-  .success-screen p{color:var(--muted);font-size:13px;line-height:1.7;}
+  /* ── SUCCESS ─────────────────────────────────────────── */
+  .success-screen{text-align:center;padding:40px 0 0;}
+  .success-icon{width:76px;height:76px;margin:0 auto 26px;border-radius:50%;border:1px solid var(--gold);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;animation:popIn .5s cubic-bezier(.2,.8,.2,1);}
+  .success-icon svg{width:34px;height:34px;fill:none;stroke:var(--gold2);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+  @keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .success-screen h2{font-family:var(--serif);font-size:38px;font-weight:400;line-height:1.05;color:#fff;margin-bottom:10px;}
+  .success-screen p{color:var(--muted);font-size:14px;line-height:1.8;}
+  .success-contact a{color:var(--text);text-decoration:none;}
 
-  .loader{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
-  .empty-state{text-align:center;color:var(--muted);padding:50px 20px;font-size:13px;line-height:1.8;}
+  .loader{text-align:center;padding:40px;color:var(--muted);font-size:13px;letter-spacing:.2em;}
+  .empty-state{text-align:center;color:var(--muted);padding:56px 20px;font-size:14px;line-height:1.8;}
+
+  /* ── FOOTER ──────────────────────────────────────────── */
+  .site-footer{max-width:1160px;margin:72px auto 0;padding:36px 20px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr;gap:26px;}
+  .site-footer .brand b{font-size:22px;}
+  .footer-col .fact-label{margin-bottom:6px;}
+  .footer-col a,.footer-col div:not(.fact-label){color:var(--text);font-size:14.5px;text-decoration:none;line-height:1.6;}
+  .footer-col a:hover{color:var(--gold2);}
+  .footer-copy{color:var(--muted);font-size:12px;letter-spacing:.04em;}
+
+  /* ── ≥ 700px ─────────────────────────────────────────── */
+  @media(min-width:700px){
+    .svc-info-btn{display:none;}
+    .svc-desc-inline{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;border-left:1px solid var(--line);margin:18px 22px 18px 20px;padding-left:24px;}
+    .svc-desc-text{color:var(--muted);font-size:13.5px;line-height:1.7;}
+    #book-services .service-card img{width:130px;}
+    #book-services .service-card .info{flex:0 0 220px;}
+
+    #home-services.svc-grid{grid-template-columns:repeat(2,1fr);gap:20px;}
+    #home-services .service-card{flex-direction:column;align-items:stretch;}
+    #home-services .service-card img{width:100%;height:auto;aspect-ratio:4/3;}
+    #home-services .service-card .info{flex:none;padding:22px 24px 8px;}
+    #home-services .service-card .name{font-size:27px;}
+    #home-services .svc-desc-inline{display:block;border-left:none;margin:0;padding:0 24px 26px;flex:1;}
+    #home-services .svc-desc-text{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+
+    .slots-grid{grid-template-columns:repeat(4,1fr);}
+    .reviews-cols{column-count:2;}
+    .site-footer{grid-template-columns:1.2fr 1fr 1fr 1fr;align-items:start;}
+    .footer-copy{grid-column:1/-1;padding-top:8px;}
+  }
+  @media(min-width:700px) and (max-width:899px){
+    .hero{min-height:620px;}
+  }
+  @media(hover:hover){
+    .service-card:hover{border-color:rgba(192,160,104,.45);box-shadow:0 18px 50px -20px rgba(0,0,0,.9);}
+    .service-card:hover img{transform:scale(1.05);}
+    .contact-btn:hover{border-color:var(--gold);background:var(--gold-dim);}
+    .btn-primary:hover{filter:brightness(1.07);box-shadow:0 14px 40px -10px rgba(192,160,104,.65),inset 0 1px 0 rgba(255,255,255,.3);}
+    .btn-outline:hover{border-color:var(--gold);color:var(--gold2);}
+    .dur-btn:hover{border-color:rgba(192,160,104,.5);}
+    .nav-tabs button:hover{color:var(--gold2);}
+  }
+
+  /* ── ≥ 900px (desktop) ───────────────────────────────── */
+  @media(min-width:900px){
+    :root{--tabbar:0px;}
+    nav{height:76px;padding:0 max(28px,calc((100vw - 1160px)/2 + 20px));}
+    .page{padding-bottom:90px;min-height:calc(100vh - 76px);}
+    .nav-tabs{position:static;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;border:none;padding:0;gap:4px;margin-left:auto;margin-right:28px;}
+    .nav-tabs button{flex:none;height:auto;flex-direction:row;padding:12px 18px;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;}
+    .nav-tabs button svg{display:none;}
+    .nav-tabs button.active::before{top:auto;bottom:4px;left:18px;right:18px;}
+
+    .hero{min-height:700px;align-items:center;}
+    .hero-photo{left:auto;right:0;width:60%;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 42%);mask-image:linear-gradient(90deg,transparent 0,#000 42%);}
+    .hero-photo img{object-position:50% 8%;}
+    .hero-photo::after{background:linear-gradient(180deg,transparent 78%,var(--bg) 100%);}
+    .hero::before{background:radial-gradient(50% 60% at 78% 30%,rgba(192,160,104,.15),transparent 70%);}
+    .hero-inner{padding:60px 20px;}
+    .hero-copy{max-width:520px;}
+    .hero h1{font-size:clamp(84px,9vw,118px);margin:22px 0 16px;}
+    .hero-grade{font-size:17px;}
+    .hero-cta{flex-direction:column;align-items:flex-start;gap:16px;margin-top:36px;}
+    .hero-cta .btn{width:auto;min-width:280px;}
+    .contact-btn{flex:none;}
+
+    .section{padding-top:64px;}
+    .section-title{font-size:46px;}
+    .fact-value{font-size:24px;}
+    .facts{grid-template-columns:repeat(4,1fr);}
+    .fact,.fact:nth-child(even),.fact:nth-child(n+3){padding:26px 20px 26px 28px;border-left:1px solid var(--line);border-top:none;}
+    .fact:first-child{padding-left:0;border-left:none;}
+    .relax-title{font-size:56px;}
+    #home-services.svc-grid{grid-template-columns:repeat(3,1fr);}
+    #home-services+.btn{width:auto;min-width:320px;display:block;margin:36px auto 0!important;}
+    .step{padding-top:56px;}
+    .step-title{font-size:44px;}
+  }
+
+  @media(max-width:360px){
+    .service-card img{width:92px;}
+    .service-card .name{font-size:21px;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+  }
+
+  /* ── POLISH ──────────────────────────────────────────── */
+  body::after{content:'';position:fixed;inset:0;z-index:50;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");}
+  nav::before{transition:background .3s;}
+  nav.scrolled::before{background:rgba(7,7,7,.92);}
+  @media(min-width:900px){
+    *{scrollbar-width:thin;scrollbar-color:#2a2823 var(--bg);}
+    ::-webkit-scrollbar{width:10px;}
+    ::-webkit-scrollbar-track{background:var(--bg);}
+    ::-webkit-scrollbar-thumb{background:#26241f;border-radius:10px;border:2px solid var(--bg);}
+    ::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+  @keyframes heroIn{from{opacity:0;transform:scale(1.07)}to{opacity:1;transform:none}}
+  @keyframes shine{0%,62%{left:-70%}100%{left:140%}}
+  .hero-photo img{animation:heroIn 1.8s cubic-bezier(.2,.7,.2,1) both;}
+  .hero-copy>*{animation:rise .95s cubic-bezier(.2,.7,.2,1) both;}
+  .hero-copy>*:nth-child(1){animation-delay:.1s}
+  .hero-copy>*:nth-child(2){animation-delay:.22s}
+  .hero-copy>*:nth-child(3){animation-delay:.34s}
+  .hero-copy>*:nth-child(4){animation-delay:.46s}
+  .js .reveal{opacity:0;}
+  .js .reveal.in{opacity:1;animation:rise .9s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:var(--d,0s);}
+  .btn-primary{position:relative;overflow:hidden;isolation:isolate;}
+  .btn-primary::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;z-index:-1;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-20deg);pointer-events:none;}
+  .hero .btn-primary::after{animation:shine 6s ease-in-out 1.6s infinite;}
+  @media(hover:hover){.btn-primary:hover::after{animation:none;left:140%;transition:left .8s cubic-bezier(.2,.7,.2,1);}}
+  .btn-primary:active{filter:brightness(.94);}
+  .service-card::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);transform:scaleX(0);transition:transform .5s cubic-bezier(.2,.7,.2,1);pointer-events:none;}
+  .service-card:hover::after,.service-card.selected::after{transform:scaleX(1);}
+  .slot-btn,.cal-day,.dur-btn,.contact-btn,.lang-flag{transition-timing-function:cubic-bezier(.2,.7,.2,1);}
 </style>
 </head>
 <body>
 
 <nav>
+  <a class="brand" href="#" onclick="showPage('home',document.querySelector('.nav-tabs button'));return false;" aria-label="SKF Massage"><b>SKF</b><span>Massage</span></a>
   <div class="nav-tabs">
-    <button class="active" onclick="showPage('home',this)" data-t="nav_home">Pealeht</button>
-    <button onclick="showPage('book',this)" id="nav-book" data-t="nav_book">Broneerimine</button>
-    <button onclick="showPage('mybookings',this)" id="nav-my" data-t="nav_my">Broneeringud</button>
-    <button onclick="showPage('reviews',this)" id="nav-rev" data-t="nav_rev">Arvustused</button>
+    <button class="active" onclick="showPage('home',this)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      <span data-t="nav_home">Pealeht</span>
+    </button>
+    <button onclick="showPage('book',this)" id="nav-book">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+      <span data-t="nav_book">Broneerimine</span>
+    </button>
+    <button onclick="showPage('mybookings',this)" id="nav-my">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v17l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 9h6M9 13h6"/></svg>
+      <span data-t="nav_my">Broneeringud</span>
+    </button>
+    <button onclick="showPage('reviews',this)" id="nav-rev">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>
+      <span data-t="nav_rev">Arvustused</span>
+    </button>
   </div>
   <div class="lang-flags">
-    <button class="lang-flag active" data-lang="et" onclick="setLang('et')"><img src="/images/flag-et.png" alt="ET"></button>
-    <button class="lang-flag" data-lang="ru" onclick="setLang('ru')"><img src="/images/flag-ru.png" alt="RU"></button>
-    <button class="lang-flag" data-lang="en" onclick="setLang('en')"><img src="/images/flag-en.png" alt="EN"></button>
+    <button class="lang-flag active" data-lang="et" onclick="setLang('et')" aria-label="Eesti"><img src="/images/flag-et.png" alt="ET"></button>
+    <button class="lang-flag" data-lang="ru" onclick="setLang('ru')" aria-label="Русский"><img src="/images/flag-ru.png" alt="RU"></button>
+    <button class="lang-flag" data-lang="en" onclick="setLang('en')" aria-label="English"><img src="/images/flag-en.png" alt="EN"></button>
   </div>
 </nav>
 
 <!-- HOME -->
 <div id="page-home" class="page active">
-  <div class="biz-strip" id="biz-info-card">
-    <span data-t="biz_company">Ettevõte</span>: SKF-MASSAGE OÜ &nbsp;·&nbsp;
-    <span data-t="biz_cert">Sertifikaat</span> №245245 &nbsp;·&nbsp;
-    <span data-t="biz_exp">Kogemus</span> <span data-t="biz_exp_val">2+ aastat</span> &nbsp;·&nbsp;
-    Tallinn, Linnamäe tee 24
+  <section class="hero">
+    <div class="hero-photo"><img src="/images/sergey.jpg" alt="Sergei" fetchpriority="high"></div>
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow" data-t="subtitle">Massöör · Tallinn</p>
+        <h1 data-t="hero_name">Sergei</h1>
+        <p class="hero-grade" data-t="grade">Massöör, 5. tase</p>
+        <div class="hero-cta">
+          <button class="btn btn-primary" onclick="goBook()" data-t="book_btn">Broneeri seanss</button>
+          <div class="contact-btns">
+            <a class="contact-btn tg" href="https://t.me/Sepa17">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11.2l6.2 2.3 2.3 6.5 3.2-4.3 4.6 3.4z"/><path d="m9.2 13.5 11.8-9.5"/></svg>
+              <span class="label" data-t="tg_btn">Kirjuta mulle</span>
+            </a>
+            <a class="contact-btn phone" href="tel:+37253730882">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+              <span class="label" data-t="phone_btn">Helista</span>
+            </a>
+            <a class="contact-btn bot" id="btn-tg-bot" href="https://t.me/skffmassagebot" target="_blank" rel="noopener" style="display:none">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M9 13.5h.01M15 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="3.8" r="1"/></svg>
+              <span class="label" data-t="bot_btn">Telegram Bot</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section" style="padding-top:36px">
+    <div class="facts">
+      <div class="fact"><div class="fact-label" data-t="biz_company">Ettevõte</div><div class="fact-value">SKF-MASSAGE OÜ</div></div>
+      <div class="fact"><div class="fact-label" data-t="biz_cert">Sertifikaat</div><div class="fact-value">№245245</div></div>
+      <div class="fact"><div class="fact-label" data-t="biz_exp">Kogemus</div><div class="fact-value" data-t="biz_exp_val">2+ aastat</div></div>
+      <div class="fact"><div class="fact-label" data-t="biz_address">Aadress</div><div class="fact-value">Linnamäe tee 24, Tallinn</div></div>
+    </div>
   </div>
-  <div class="hero">
-    <div class="hero-side hero-side-left">
-      <div class="hero-side-label" data-t="biz_company">Ettevõte</div>
-      <div class="hero-side-value">SKF-MASSAGE OÜ</div>
-      <div class="hero-side-label" style="margin-top:14px" data-t="biz_cert">Sertifikaat</div>
-      <div class="hero-side-value">№245245</div>
+
+  <div class="section">
+    <div class="relax-head">
+      <p class="eyebrow">SKF Massage</p>
+      <span class="relax-title">Relax</span>
     </div>
-    <img src="/images/sergey.jpg" onerror="this.src=''">
-    <div class="hero-side hero-side-right">
-      <div class="hero-side-label" data-t="biz_exp">Kogemus</div>
-      <div class="hero-side-value" data-t="biz_exp_val">2+ aastat</div>
-      <div class="hero-side-label" style="margin-top:14px" data-t="biz_address">Aadress</div>
-      <div class="hero-side-value">Tallinn,<br>Linnamäe tee 24</div>
-    </div>
-    <div class="hero-text">
-      <h1 data-t="hero_name">Sergei</h1>
-      <p data-t="grade" style="margin-bottom:1px">Massöör, 5. tase</p>
-      <p>Tallinn</p>
-    </div>
+    <div id="home-services" class="loader svc-grid">...</div>
+    <button class="btn btn-primary" style="margin-top:28px" onclick="goBook()" data-t="book_btn">Broneeri seanss</button>
   </div>
-  <div class="section" style="margin-top:16px">
-    <div class="contact-btns">
-      <a class="contact-btn tg" href="https://t.me/Sepa17">
-        <img class="ico" src="/images/tg.png" onerror="this.src=''">
-        <div class="label" data-t="tg_btn">Kirjuta mulle</div>
-      </a>
-      <a class="contact-btn phone" href="tel:+37253730882">
-        <img class="ico" src="/images/trubka.png" onerror="this.src=''">
-        <div class="label" data-t="phone_btn">Helista</div>
-      </a>
-      <a class="contact-btn bot" id="btn-tg-bot" href="https://t.me/skffmassagebot" target="_blank" rel="noopener" style="display:none">
-        <span class="ico-emoji">🤖</span>
-        <div class="label" data-t="bot_btn">Telegram Bot</div>
-      </a>
+
+  <footer class="site-footer">
+    <div class="footer-col">
+      <a class="brand" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;"><b>SKF</b><span>Massage</span></a>
     </div>
-    <div class="relax-divider"><span class="relax-title">Relax</span></div>
-    <div id="home-services" class="loader">...</div>
-    <button class="btn btn-primary" style="margin-top:20px" onclick="goBook()" data-t="book_btn">Broneeri seanss</button>
-  </div>
+    <div class="footer-col">
+      <div class="fact-label" data-t="biz_address">Aadress</div>
+      <a href="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn" target="_blank" rel="noopener">Linnamäe tee 24, Tallinn</a>
+    </div>
+    <div class="footer-col">
+      <div class="fact-label" data-t="phone_label">Telefon</div>
+      <a href="tel:+37253730882">+372 53 730 882</a>
+    </div>
+    <div class="footer-col">
+      <div class="fact-label">Telegram</div>
+      <a href="https://t.me/Sepa17" target="_blank" rel="noopener">@Sepa17</a>
+    </div>
+    <div class="footer-copy">© SKF-MASSAGE OÜ</div>
+  </footer>
 </div>
 
 <!-- BOOK -->
 <div id="page-book" class="page">
   <div class="step active" id="step0">
-    <p class="step-title" style="padding:20px 16px 0" data-t="choose_service">Vali teenus</p>
-    <div class="svc-list-wrap" style="padding:0 16px"><div id="book-services" class="loader">...</div></div>
+    <p class="step-title" data-t="choose_service">Vali teenus</p>
+    <div id="book-services" class="loader">...</div>
   </div>
   <div class="step" id="step1">
     <p class="step-title" data-t="duration">Kestus</p>
     <div class="dur-row">
       <button class="dur-btn selected" id="dur60" onclick="selectDur(60,35)">
-        <div style="font-size:18px;margin-bottom:4px;font-weight:700">60 <span data-t="min">min</span></div>
-        <div style="color:var(--accent);font-weight:700">35€</div>
+        <div style="font-family:var(--serif);font-size:34px;line-height:1;margin-bottom:8px;font-weight:500;color:#fff">60 <span data-t="min" style="font-family:'Manrope',sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">min</span></div>
+        <div style="color:var(--gold2);font-weight:700;font-size:15px">35€</div>
       </button>
       <button class="dur-btn" id="dur90" onclick="selectDur(90,50)">
-        <div style="font-size:18px;margin-bottom:4px;font-weight:700">90 <span data-t="min">min</span></div>
-        <div style="color:var(--accent);font-weight:700">50€</div>
+        <div style="font-family:var(--serif);font-size:34px;line-height:1;margin-bottom:8px;font-weight:500;color:#fff">90 <span data-t="min" style="font-family:'Manrope',sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">min</span></div>
+        <div style="color:var(--gold2);font-weight:700;font-size:15px">50€</div>
       </button>
     </div>
     <button class="btn btn-primary" onclick="goStep(2)" data-t="choose_date">Vali kuupäev →</button>
@@ -278,13 +440,13 @@
   <div class="step" id="step2">
     <p class="step-title" data-t="date_time">Kuupäev ja kellaaeg</p>
     <div class="cal-header">
-      <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+      <button class="cal-nav" onclick="changeMonth(-1)" aria-label="Previous month">‹</button>
       <span id="cal-month-label"></span>
-      <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      <button class="cal-nav" onclick="changeMonth(1)" aria-label="Next month">›</button>
     </div>
     <div class="cal-grid" id="cal-grid"></div>
     <div id="slots-section" style="display:none">
-      <p style="font-family:'Playfair Display',serif;font-size:17px;color:#fff;margin-bottom:10px" data-t="time">Kellaaeg</p>
+      <p style="color:#fff;margin-bottom:14px" data-t="time">Kellaaeg</p>
       <div class="slots-grid" id="slots-grid"></div>
     </div>
     <button class="btn btn-primary" id="btn-step2-next" style="display:none" onclick="goStep(3)" data-t="next">Edasi →</button>
@@ -306,33 +468,33 @@
   </div>
   <div class="step" id="step-success">
     <div class="success-screen">
-      <div class="success-icon">✅</div>
+      <div class="success-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
       <h2 data-t="success_title">Broneering kinnitatud!</h2>
       <p data-t="success_sub">Sergei saab teatise</p>
-      <div class="summary" id="success-detail" style="margin-top:20px;text-align:left"></div>
-      <p style="color:var(--muted);font-size:12px;margin-top:16px;line-height:1.9">
-        🏠 Linnamäe tee 24, Tallinn<br>
-        📲 <a href="tel:+37253730882" style="color:var(--muted)">+372 53 730 882</a>
+      <div class="summary" id="success-detail" style="margin-top:26px;text-align:left"></div>
+      <p class="success-contact" style="font-size:13px;margin-top:18px;line-height:2">
+        Linnamäe tee 24, Tallinn<br>
+        <a href="tel:+37253730882">+372 53 730 882</a>
       </p>
-      <button class="btn btn-outline" style="margin-top:20px" onclick="resetBook()" data-t="book_again">Broneeri uuesti</button>
+      <button class="btn btn-outline" style="margin-top:24px" onclick="resetBook()" data-t="book_again">Broneeri uuesti</button>
     </div>
   </div>
 </div>
 
 <!-- MY BOOKINGS -->
 <div id="page-mybookings" class="page">
-  <div class="section" style="padding-top:20px">
+  <div class="section" style="max-width:700px">
     <p class="section-title" data-t="my_bookings">Broneeringud</p>
-    <div id="mybookings-list" class="loader">...</div>
+    <div id="mybookings-list">...</div>
   </div>
 </div>
 
 <!-- REVIEWS -->
 <div id="page-reviews" class="page">
-  <div class="section" style="padding-top:20px">
+  <div class="section" style="max-width:1000px">
     <p class="section-title" data-t="reviews_title">Arvustused</p>
-    <button class="btn btn-outline" id="btn-toggle-review-form" style="margin-top:0;margin-bottom:16px" onclick="toggleReviewForm()" data-t="write_review">✍️ Jäta arvustus</button>
-    <div class="review-form-box" id="review-form" style="display:none">
+    <button class="btn btn-outline" id="btn-toggle-review-form" style="margin-top:0;margin-bottom:22px;max-width:360px" onclick="toggleReviewForm()" data-t="write_review">Jäta arvustus</button>
+    <div class="review-form-box" id="review-form" style="display:none;max-width:560px">
       <div class="form-group">
         <label data-t="service">Teenus</label>
         <select id="rev-service"></select>
@@ -353,14 +515,14 @@
       </div>
       <button class="btn btn-primary" id="btn-submit-review" onclick="submitReview()" data-t="submit_review">Saada arvustus</button>
     </div>
-    <div id="reviews-list" class="loader">...</div>
+    <div id="reviews-list">...</div>
   </div>
 </div>
 
 <!-- SERVICE DESCRIPTION MODAL -->
 <div class="modal-overlay" id="desc-modal" onclick="if(event.target===this)closeDescModal()">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeDescModal()">✕</button>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <button class="modal-close" onclick="closeDescModal()" aria-label="Close">✕</button>
     <div class="modal-title" id="modal-title"></div>
     <div class="modal-body" id="modal-body"></div>
   </div>
@@ -398,7 +560,7 @@ const T={
     page_title:'Сергей — массажист',hero_name:'Сергей',no_connection:'Нет соединения',
     biz_company:'Компания',biz_specialist:'Специалист',biz_cert:'Сертификат',
     biz_exp:'Опыт работы',biz_exp_val:'2+ года',biz_address:'Адрес',
-    write_review:'✍️ Оставить отзыв',your_rating:'Оценка',review_text_label:'Комментарий',
+    write_review:'Оставить отзыв',your_rating:'Оценка',review_text_label:'Комментарий',
     submit_review:'Отправить отзыв',select_rating_first:'Сначала выберите оценку',
     review_sent:'Спасибо за отзыв!'
   },
@@ -427,7 +589,7 @@ const T={
     page_title:'Sergei — massöör Tallinnas',hero_name:'Sergei',no_connection:'Ühendus puudub',
     biz_company:'Ettevõte',biz_specialist:'Spetsialist',biz_cert:'Sertifikaat',
     biz_exp:'Kogemus',biz_exp_val:'2+ aastat',biz_address:'Aadress',
-    write_review:'✍️ Jäta arvustus',your_rating:'Hinnang',review_text_label:'Kommentaar',
+    write_review:'Jäta arvustus',your_rating:'Hinnang',review_text_label:'Kommentaar',
     submit_review:'Saada arvustus',select_rating_first:'Vali kõigepealt hinnang',
     review_sent:'Aitäh arvustuse eest!'
   },
@@ -456,7 +618,7 @@ const T={
     page_title:'Sergei — massage therapist in Tallinn',hero_name:'Sergei',no_connection:'Connection error',
     biz_company:'Company',biz_specialist:'Specialist',biz_cert:'Certificate',
     biz_exp:'Experience',biz_exp_val:'2+ years',biz_address:'Address',
-    write_review:'✍️ Leave a review',your_rating:'Rating',review_text_label:'Comment',
+    write_review:'Leave a review',your_rating:'Rating',review_text_label:'Comment',
     submit_review:'Submit review',select_rating_first:'Please choose a rating first',
     review_sent:'Thanks for your review!'
   }
@@ -582,14 +744,14 @@ function renderServicesHTML(){
   document.getElementById('book-services').classList.remove('loader');
   document.getElementById('home-services').innerHTML=services.map((s,i)=>`
     <div class="service-card" onclick="bookService(${i})">
-      <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
+      <img src="/images/${s.img.replace('images/','')}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="info"><div class="name">${svcName(s.name)}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine()}</div></div>
       ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${svcDescBase(s.name)}</div></div>`:''}
       ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})">ⓘ</button>`:''}
     </div>`).join('');
   document.getElementById('book-services').innerHTML=services.map((s,i)=>`
     <div class="service-card" id="svc-${i}" onclick="selectService(${i})">
-      <img src="/images/${s.img.replace('images/','')}" onerror="this.style.display='none'">
+      <img src="/images/${s.img.replace('images/','')}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="info"><div class="name">${svcName(s.name)}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine()}</div></div>
       ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${svcDescBase(s.name)}</div></div>`:''}
       ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})">ⓘ</button>`:''}
@@ -721,12 +883,12 @@ async function loadReviews(){
   try{
     const reviews=await fetch(API+'/api/reviews').then(r=>r.json()); reviewsLoaded=true;
     const el=document.getElementById('reviews-list');
-    if(!reviews.length){el.innerHTML=`<div class="empty-state">${t('no_reviews')} 💆</div>`;return;}
-    el.innerHTML=reviews.map(r=>`
+    if(!reviews.length){el.innerHTML=`<div class="empty-state">${t('no_reviews')}</div>`;return;}
+    el.classList.add('reviews-cols');el.innerHTML=reviews.map(r=>`
       <div class="review-card">
-        <div class="review-stars">${'⭐'.repeat(r.rating)}</div>
+        <div class="review-stars">${'★'.repeat(r.rating)}</div>
         ${r.text?`<div class="review-text">${r.text}</div>`:''}
-        <div class="review-meta">💆 ${svcName(r.service)} · ${r.username}</div>
+        <div class="review-meta">${svcName(r.service)} · ${r.username}</div>
       </div>`).join('');
   }catch(e){document.getElementById('reviews-list').innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
 }
@@ -821,9 +983,9 @@ async function fetchAndRenderBookings(query){
     }
     el.innerHTML=bookings.map(b=>`
       <div class="booking-card">
-        <div class="svc">💆 ${svcName(b.service)}</div>
-        <div class="detail">📅 ${b.day} ${t('months_gen')[b.month-1]} · 🕐 ${b.time}</div>
-        <div class="detail">👤 ${b.name} · 📞 ${b.phone}</div>
+        <div class="svc">${svcName(b.service)}</div>
+        <div class="detail">${b.day} ${t('months_gen')[b.month-1]} · ${b.time}</div>
+        <div class="detail">${b.name} · ${b.phone}</div>
         <button class="btn btn-outline" style="margin-top:10px;padding:10px" onclick="cancelMyBooking(${b.id})">${t('cancel_btn')}</button>
       </div>`).join('');
   }catch(e){el.innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
@@ -842,6 +1004,27 @@ async function cancelMyBooking(id){
   }catch(e){ alert(t('no_connection')); }
 }
 
+// ── POLISH: reveal-on-scroll, nav state ───────────────────────────────────
+(function(){
+  document.documentElement.classList.add('js');
+  const sel='.fact,.relax-head,.service-card,.review-card,.booking-card,.footer-col,.footer-copy';
+  const io='IntersectionObserver' in window?new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}
+  }),{threshold:.1,rootMargin:'0px 0px -5% 0px'}):null;
+  function scan(root){
+    root.querySelectorAll(sel).forEach(el=>{
+      if(el.dataset.rv)return; el.dataset.rv=1; el.classList.add('reveal');
+      const idx=[...el.parentNode.children].indexOf(el);
+      el.style.setProperty('--d',(Math.min(idx,6)*.08)+'s');
+      io?io.observe(el):el.classList.add('in');
+    });
+  }
+  new MutationObserver(ms=>{ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)scan(n.parentNode||document);}));}).observe(document.body,{childList:true,subtree:true});
+  scan(document);
+  setTimeout(()=>document.querySelectorAll('.reveal:not(.in)').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.classList.add('in');}),1200);
+  const nav=document.querySelector('nav');
+  addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>8),{passive:true});
+})();
 loadServices();
 </script>
 </body>
