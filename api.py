@@ -191,6 +191,11 @@ def index():
     with open(os.path.join(BASE_DIR, "webapp", "index.html"), encoding="utf-8") as f:
         return HTMLResponse(content=f.read(), headers={"Cache-Control": "no-store, must-revalidate"})
 
+@app.get("/new", response_class=HTMLResponse)
+def index_new():
+    with open(os.path.join(BASE_DIR, "webapp", "index-new.html"), encoding="utf-8") as f:
+        return HTMLResponse(content=f.read(), headers={"Cache-Control": "no-store, must-revalidate"})
+
 def _norm_phone(p):
     return re.sub(r"[^\d+]", "", p or "")
 
