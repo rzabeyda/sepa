@@ -13,14 +13,14 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#070707;--bg2:#101010;--bg3:#161616;
     --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15);--border:rgba(255,255,255,.09);
     --gold:#c0a068;--gold2:#dcc592;--accent:#c0a068;--gold-dim:rgba(192,160,104,.12);
     --text:#ece7df;--muted:#8f897f;--r:14px;
-    --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+    --serif:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
     --tabbar:68px;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -207,6 +207,8 @@
   .footer-col .fact-label{margin-bottom:6px;}
   .footer-col a,.footer-col div:not(.fact-label){color:var(--text);font-size:14.5px;text-decoration:none;line-height:1.6;}
   .footer-col a:hover{color:var(--gold2);}
+  .footer-partner img{display:block;width:96px;height:96px;object-fit:contain;mix-blend-mode:screen;opacity:.92;transition:opacity .25s,transform .35s cubic-bezier(.2,.7,.2,1);}
+  .footer-partner a:hover img{opacity:1;transform:scale(1.06);}
   .footer-copy{color:var(--muted);font-size:12px;letter-spacing:.04em;}
 
   /* ── ≥ 700px ─────────────────────────────────────────── */
@@ -227,7 +229,7 @@
 
     .slots-grid{grid-template-columns:repeat(4,1fr);}
     .reviews-cols{column-count:2;}
-    .site-footer{grid-template-columns:1.2fr 1fr 1fr 1fr;align-items:start;}
+    .site-footer{grid-template-columns:1.1fr 1fr 1fr 1fr auto;align-items:start;}
     .footer-copy{grid-column:1/-1;padding-top:8px;}
   }
 
@@ -315,6 +317,31 @@
   .service-card::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);transform:scaleX(0);transition:transform .5s cubic-bezier(.2,.7,.2,1);pointer-events:none;}
   .service-card:hover::after,.service-card.selected::after{transform:scaleX(1);}
   .slot-btn,.cal-day,.dur-btn,.contact-btn,.lang-flag{transition-timing-function:cubic-bezier(.2,.7,.2,1);}
+
+  /* ── TYPE: clean sans-serif headings ─────────────────── */
+  .hero h1{font-weight:700;letter-spacing:-.03em;line-height:.98;font-size:clamp(46px,13vw,68px);}
+  .section-title,.step-title,.success-screen h2{font-weight:600;letter-spacing:-.025em;line-height:1.1;font-size:30px;}
+  .modal-title{font-weight:600;letter-spacing:-.02em;font-size:23px;}
+  .service-card .name{font-weight:600;letter-spacing:-.015em;font-size:18px;line-height:1.2;}
+  .fact-value{font-weight:600;letter-spacing:-.01em;font-size:17px;}
+  .cal-header span{font-weight:600;font-size:20px;letter-spacing:-.01em;}
+  .review-text{font-weight:400;font-size:15.5px;line-height:1.6;}
+  .booking-card .svc{font-weight:600;font-size:19px;letter-spacing:-.01em;}
+  #slots-section>p{font-weight:600!important;font-size:19px!important;}
+  .brand b{font-weight:800;letter-spacing:.12em;font-size:20px;}
+  .brand span{font-weight:600;}
+  @media(min-width:700px){#home-services .service-card .name{font-size:21px;}}
+  @media(min-width:900px){
+    .hero h1{font-size:clamp(64px,7.2vw,96px);}
+    .section-title,.step-title{font-size:38px;}
+    .success-screen h2{font-size:34px;}
+    .fact-value{font-size:19px;}
+  }
+  /* ── INFO BUTTON: icon fills the whole circle ────────── */
+  .svc-info-btn{border:none;background:none;padding:0;width:34px;height:34px;color:var(--gold2);opacity:.75;transition:opacity .2s,transform .15s,color .2s;}
+  .svc-info-btn svg{width:34px;height:34px;display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;}
+  .svc-info-btn svg .dot{fill:currentColor;stroke:none;}
+  .svc-info-btn:active{opacity:1;transform:scale(.9);color:#fff;}
 </style>
 </head>
 <body>
@@ -408,6 +435,10 @@
     <div class="footer-col">
       <div class="fact-label">Telegram</div>
       <a href="https://t.me/SKF_Massage" target="_blank" rel="noopener">@SKF_Massage</a>
+    </div>
+    <div class="footer-col footer-partner">
+      <div class="fact-label">Partner</div>
+      <a href="https://stebby.eu/" target="_blank" rel="noopener" aria-label="Stebby Partner"><img src="/images/stebby.jpg" alt="Stebby Partner" width="96" height="96" loading="lazy"></a>
     </div>
     <div class="footer-copy">© SKF-MASSAGE OÜ</div>
   </footer>
@@ -736,6 +767,7 @@ async function loadServices(){
   }catch(e){document.getElementById('home-services').innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
 }
 
+const INFO_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5"/><path d="M12 11v6"/><circle class="dot" cx="12" cy="7.6" r="1.25"/></svg>';
 function renderServicesHTML(){
   document.getElementById('home-services').classList.remove('loader');
   document.getElementById('book-services').classList.remove('loader');
@@ -744,14 +776,14 @@ function renderServicesHTML(){
       <img src="/images/${s.img.replace('images/','')}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="info"><div class="name">${svcName(s.name)}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine()}</div></div>
       ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${svcDescBase(s.name)}</div></div>`:''}
-      ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})">ⓘ</button>`:''}
+      ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})" aria-label="Info">${INFO_SVG}</button>`:''}
     </div>`).join('');
   document.getElementById('book-services').innerHTML=services.map((s,i)=>`
     <div class="service-card" id="svc-${i}" onclick="selectService(${i})">
       <img src="/images/${s.img.replace('images/','')}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="info"><div class="name">${svcName(s.name)}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine()}</div></div>
       ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${svcDescBase(s.name)}</div></div>`:''}
-      ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})">ⓘ</button>`:''}
+      ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})" aria-label="Info">${INFO_SVG}</button>`:''}
     </div>`).join('');
 }
 
