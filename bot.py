@@ -645,8 +645,8 @@ def get_all_blocked_slots():
     for date,time in rows: result.setdefault(date,[]).append(time)
     return result
 
-CONTACTS_FULL  = "📞 +372 53 730 882\n💬 Telegram: @Sepa17"
-CONTACTS_SHORT = "📞 +372 53 730 882\n💬 Telegram: @Sepa17"
+CONTACTS_FULL  = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
+CONTACTS_SHORT = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
 
 MONTHS = {1:"Январь",2:"Февраль",3:"Март",4:"Апрель",5:"Май",6:"Июнь",
           7:"Июль",8:"Август",9:"Сентябрь",10:"Октябрь",11:"Ноябрь",12:"Декабрь"}
@@ -1338,7 +1338,7 @@ async def cb_portfolio(call: types.CallbackQuery):
 @dp.message(F.text == "💬 Написать")
 async def btn_chat(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/Sepa17")]])
+        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/SKF_Massage")]])
     await message.answer("💬 Выбери как удобнее:", reply_markup=kb)
 
 @dp.callback_query(F.data.startswith("tip_open:"))
