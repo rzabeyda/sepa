@@ -2,7 +2,7 @@ import sqlite3, os, calendar, re, urllib.request, urllib.parse
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -185,6 +185,46 @@ def api_book(b: BookingIn):
 
 if os.path.exists(os.path.join(BASE_DIR, "images")):
     app.mount("/images", StaticFiles(directory=os.path.join(BASE_DIR, "images")), name="images")
+
+VIDEOS_DIR = os.path.join(BASE_DIR, "videos")
+_VIDEO_TYPES = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".jpg": "image/jpeg"}
+
+@app.get("/videos/{name}")
+def serve_video(name: str, request: Request):
+    """Отдаёт видео с поддержкой Range — без этого iPhone/Safari не играют mp4 и нет перемотки."""
+    ext = os.path.splitext(name)[1].lower()
+    path = os.path.join(VIDEOS_DIR, os.path.basename(name))
+    if ext not in _VIDEO_TYPES or not os.path.isfile(path):
+        return Response(status_code=404)
+    size = os.path.getsize(path)
+    headers = {"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=86400"}
+    start, end, status = 0, size - 1, 200
+    m = re.match(r"bytes=(\d*)-(\d*)$", request.headers.get("range", "").strip())
+    if m and (m.group(1) or m.group(2)):
+        if m.group(1):
+            start = int(m.group(1))
+            end = int(m.group(2)) if m.group(2) else size - 1
+        else:  # суффикс: последние N байт
+            start = max(size - int(m.group(2)), 0)
+        end = min(end, size - 1)
+        if start > end or start >= size:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        status = 206
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+    length = end - start + 1
+    headers["Content-Length"] = str(length)
+
+    def chunks():
+        with open(path, "rb") as f:
+            f.seek(start)
+            left = length
+            while left > 0:
+                data = f.read(min(1024 * 512, left))
+                if not data:
+                    break
+                left -= len(data)
+                yield data
+    return StreamingResponse(chunks(), status_code=status, media_type=_VIDEO_TYPES[ext], headers=headers)
 
 @app.get("/", response_class=HTMLResponse)
 def index():

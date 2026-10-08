@@ -351,6 +351,12 @@
   @media(hover:hover){.gallery-item:hover img{transform:scale(1.07);}.gallery-item:hover{border-color:rgba(192,160,104,.5);}.gallery-item:hover::after{opacity:0;}}
   @media(min-width:700px){.gallery-grid{grid-template-columns:repeat(3,1fr);gap:16px;}}
   @media(min-width:1000px){.gallery-grid{grid-template-columns:repeat(4,1fr);}}
+  .gallery-item video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+  .play-badge{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(7,7,7,.55);border:1px solid rgba(220,197,146,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:grid;place-items:center;z-index:1;transition:transform .35s cubic-bezier(.2,.7,.2,1),background .25s,border-color .25s;pointer-events:none;}
+  .play-badge svg{width:26px;height:26px;fill:var(--gold2);stroke:none;margin-left:3px;}
+  @media(hover:hover){.gallery-video:hover .play-badge{transform:scale(1.1);background:var(--gold-dim);border-color:var(--gold);}.gallery-video:hover video{transform:scale(1.04);}}
+  .gallery-video video{transition:transform .7s cubic-bezier(.2,.7,.2,1);}
+  .lightbox video{max-width:min(94vw,1000px);max-height:84vh;width:100%;border-radius:14px;background:#000;box-shadow:0 30px 90px -20px #000;outline:none;}
   .lightbox{display:none;position:fixed;inset:0;z-index:1100;background:rgba(5,5,5,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px;}
   .lightbox.open{display:flex;animation:fadeIn .25s ease;}
   .lightbox img{max-width:min(92vw,1000px);max-height:86vh;object-fit:contain;border-radius:14px;box-shadow:0 30px 90px -20px #000;user-select:none;-webkit-user-drag:none;}
@@ -588,6 +594,7 @@
   <button class="lb-btn lb-close" onclick="closeLightbox()" aria-label="Close">✕</button>
   <button class="lb-btn lb-prev" onclick="lbStep(-1)" aria-label="Previous">‹</button>
   <img id="lb-img" alt="">
+  <video id="lb-video" controls playsinline preload="metadata" style="display:none"></video>
   <button class="lb-btn lb-next" onclick="lbStep(1)" aria-label="Next">›</button>
 </div>
 
@@ -1078,17 +1085,26 @@ async function cancelMyBooking(id){
 }
 
 // ── GALLERY ────────────────────────────────────────────────────────────────
-// Файлы из папки images/, например: ['gallery-1.jpg','gallery-2.jpg']
-const GALLERY=[];
+// Фото лежат в images/, видео в videos/. Пример: ['photo-1.jpg', {video:'massage01.mp4'}]
+const GALLERY=[{video:'massage01.mp4'}];
 let lbIndex=0;
 (function renderGallery(){
   document.getElementById('gallery-empty').style.display=GALLERY.length?'none':'block';
-  document.getElementById('gallery-grid').innerHTML=GALLERY.map((f,i)=>
-    `<button class="gallery-item" onclick="openLightbox(${i})" aria-label="Photo ${i+1}"><img src="/images/${f}" alt="" loading="lazy" decoding="async" ${i===0?'style="object-position:50% 12%"':''}></button>`).join('');
+  document.getElementById('gallery-grid').innerHTML=GALLERY.map((f,i)=>f.video
+    ?`<button class="gallery-item gallery-video" onclick="openLightbox(${i})" aria-label="Video ${i+1}"><video src="/videos/${f.video}#t=0.6" muted playsinline preload="metadata" tabindex="-1"></video><span class="play-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6.5 9 5.5-9 5.5z"/></svg></span></button>`
+    :`<button class="gallery-item" onclick="openLightbox(${i})" aria-label="Photo ${i+1}"><img src="/images/${f}" alt="" loading="lazy" decoding="async"></button>`).join('');
 })();
 function openLightbox(i){lbIndex=i;lbShow();document.getElementById('lightbox').classList.add('open');haptic('light');}
-function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
-function lbShow(){document.getElementById('lb-img').src='/images/'+GALLERY[lbIndex];}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+  const v=document.getElementById('lb-video');v.pause();v.removeAttribute('src');v.load();
+}
+function lbShow(){
+  const f=GALLERY[lbIndex],img=document.getElementById('lb-img'),v=document.getElementById('lb-video');
+  v.pause();
+  if(f.video){img.style.display='none';v.style.display='block';v.src='/videos/'+f.video;v.play().catch(()=>{});}
+  else{v.style.display='none';v.removeAttribute('src');img.style.display='block';img.src='/images/'+f;}
+}
 function lbStep(d){lbIndex=(lbIndex+d+GALLERY.length)%GALLERY.length;lbShow();}
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('lightbox').classList.contains('open'))return;
