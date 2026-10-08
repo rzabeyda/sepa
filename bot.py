@@ -819,7 +819,7 @@ def format_booking(b, idx=None, username=None):
     prefix = f"Бронь №{idx}\n" if idx else ""
     svc = get_service(b["service"]); dur_str = svc["duration"] if svc else ""
     tg_line = f" | 💬 @{username}" if username else ""
-    addr = "\n\n🏠 Linnamäe tee 24-42" if username is None else ""
+    addr = "\n\n🏠 Linnamäe tee 24" if username is None else ""
     countdown = time_until_booking(b)
     countdown_line = f"\n{countdown}" if countdown else ""
     return f"{prefix}💆 {b['service']}\n⏱ Длительность: ~{dur_str}\n🕐 {b['time']} | {b['day']} {month_name}{countdown_line}\n👤 {b['name']} 📞 {b['phone']}{tg_line}{addr}".strip()
@@ -896,13 +896,13 @@ def make_calendar_url(b) -> str:
         end = start + timedelta(minutes=dur)
         fmt = "%Y%m%dT%H%M%S"
         title = f"Массаж у Сергея — {b['service']}"
-        details = f"Адрес: Linnamäe tee 24-42\nТелефон: +372 53 730 882"
+        details = f"Адрес: Linnamäe tee 24\nТелефон: +372 53 730 882"
         url = (
             f"https://calendar.google.com/calendar/r/eventedit"
             f"?text={title.replace(' ', '+')}"
             f"&dates={start.strftime(fmt)}/{end.strftime(fmt)}"
             f"&details={details.replace(' ', '+').replace(':', '%3A')}"
-            f"&location=Linnam%C3%A4e+tee+24-42"
+            f"&location=Linnam%C3%A4e+tee+24"
         )
         return url
     except Exception:
