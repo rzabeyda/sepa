@@ -361,6 +361,18 @@
   .lb-close{top:18px;right:18px;font-size:16px;}
   .lb-prev{left:14px;top:50%;margin-top:-23px;}
   .lb-next{right:14px;top:50%;margin-top:-23px;}
+
+  /* ── SOCIAL ICONS ────────────────────────────────────── */
+  .social-row{display:flex;gap:12px;margin-top:6px;}
+  .social{width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:rgba(255,255,255,.03);display:grid;place-items:center;color:var(--gold2);text-decoration:none;transition:border-color .25s,background .25s,transform .25s cubic-bezier(.2,.7,.2,1),color .25s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+  .social svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+  .social svg .fill{fill:currentColor;stroke:none;}
+  .social-img img{width:30px;height:30px;object-fit:contain;mix-blend-mode:screen;display:block;opacity:.95;}
+  .social:active{transform:scale(.92);}
+  @media(hover:hover){.social:hover{border-color:var(--gold);background:var(--gold-dim);color:#fff;transform:translateY(-3px);}}
+  .hero-inner{padding-bottom:22px;}
+  .hero+.section{padding-top:22px!important;}
+  @media(min-width:900px){.hero-inner{padding-bottom:60px;}.hero+.section{padding-top:36px!important;}}
 </style>
 </head>
 <body>
@@ -415,6 +427,20 @@
             <a class="contact-btn bot" id="btn-tg-bot" href="https://t.me/skffmassagebot" target="_blank" rel="noopener" style="display:none">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M9 13.5h.01M15 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="3.8" r="1"/></svg>
               <span class="label" data-t="bot_btn">Telegram Bot</span>
+            </a>
+          </div>
+          <div class="social-row">
+            <a class="social" href="https://t.me/SKF_Massage" target="_blank" rel="noopener" aria-label="Telegram">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11.2l6.2 2.3 2.3 6.5 3.2-4.3 4.6 3.4z"/><path d="m9.2 13.5 11.8-9.5"/></svg>
+            </a>
+            <a class="social" href="https://www.instagram.com/sergey.kolesnikov.7140" target="_blank" rel="noopener" aria-label="Instagram">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".9" class="fill"/></svg>
+            </a>
+            <a class="social" href="https://www.tiktok.com/@serega.17..31" target="_blank" rel="noopener" aria-label="TikTok">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v11.3a3.3 3.3 0 1 1-3.3-3.3"/><path d="M14 3c.3 2.5 1.9 4.1 4.6 4.3"/></svg>
+            </a>
+            <a class="social social-img" href="https://stebby.eu/" target="_blank" rel="noopener" aria-label="Stebby">
+              <img src="/images/stebby.jpg" alt="Stebby" width="30" height="30">
             </a>
           </div>
         </div>
