@@ -828,7 +828,7 @@ def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     has_booking = bool(user_id and get_user_bookings(user_id))
     broni_btn = KeyboardButton(text="✅ Брони") if has_booking else KeyboardButton(text="🗓 Брони")
     row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 Промокод")]
-    row2 = [KeyboardButton(text="💬 Написать"), KeyboardButton(text="👱‍♀️ Коллеги"), KeyboardButton(text="⭐ Отзывы")]
+    row2 = [KeyboardButton(text="💬 Написать"), KeyboardButton(text="🖼 Галерея"), KeyboardButton(text="⭐ Отзывы")]
     buttons = [row1, row2]
     if is_admin: buttons.append([KeyboardButton(text="🔐 Админка")])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
@@ -1237,20 +1237,10 @@ async def wr_text(message: types.Message, state: FSMContext):
     await _save_write_review(message, state, text)
     await message.answer("🙏 Спасибо за отзыв!")
 
-@dp.message(F.text == "👱‍♀️ Коллеги")
-async def btn_friends(message: types.Message):
-    friends = get_all_friends()
-    if not friends:
-        await message.answer(
-            "👱‍♀️ *Коллеги Сергея*\n\n"
-            "🔧 Раздел в разработке — скоро здесь появятся проверенные коллеги Сергея 💆",
-            parse_mode="Markdown")
-        return
-    rows = []
-    for f in friends:
-        rows.append([InlineKeyboardButton(text=f"👤 {f['name']} — {f['specialty']}", callback_data=f"friend_view:{f['id']}")])
-    kb = InlineKeyboardMarkup(inline_keyboard=rows)
-    await message.answer("👱‍♀️ Коллеги Сергея\n\nВыберите мастера 👇", reply_markup=kb)
+# "👱‍♀️ Коллеги" оставлен в наборе — у тех, у кого ещё старая клавиатура, кнопка тоже покажет галерею
+@dp.message(F.text.in_({"🖼 Галерея", "👱‍♀️ Коллеги"}))
+async def btn_gallery(message: types.Message):
+    await message.answer("🖼 *Галерея*\n\nФото скоро появятся 💆", parse_mode="Markdown")
 
 @dp.callback_query(F.data.startswith("friend_view:"))
 async def friend_view(call: types.CallbackQuery):
