@@ -545,6 +545,7 @@
   <div class="section">
     <p class="section-title" data-t="nav_gallery">Galerii</p>
     <div class="gallery-grid" id="gallery-grid"></div>
+    <div class="empty-state" id="gallery-empty" data-t="gallery_soon" style="display:none">Fotod lisanduvad peagi</div>
   </div>
 </div>
 
@@ -603,7 +604,7 @@ const userId=tg?.initDataUnsafe?.user?.id||0;
 
 const T={
   ru:{
-    nav_home:'Главная',nav_book:'Запись',nav_my:'Брони',nav_rev:'Отзывы',nav_gallery:'Галерея',
+    nav_home:'Главная',nav_book:'Запись',nav_my:'Брони',nav_rev:'Отзывы',nav_gallery:'Галерея',gallery_soon:'Фото скоро появятся',
     subtitle:'Массажист · Таллин',grade:'Массажист, 5 разряд',tg_btn:'Написать мне',
     phone_btn:'Позвонить мне',bot_btn:'Телеграм Бот',book_btn:'Записаться на сеанс',
     choose_service:'Выберите услугу',duration:'Длительность',min:'мин',
@@ -632,7 +633,7 @@ const T={
     review_sent:'Спасибо за отзыв!'
   },
   et:{
-    nav_home:'Pealeht',nav_book:'Broneeri',nav_my:'Broneeringud',nav_rev:'Arvustused',nav_gallery:'Galerii',
+    nav_home:'Pealeht',nav_book:'Broneeri',nav_my:'Broneeringud',nav_rev:'Arvustused',nav_gallery:'Galerii',gallery_soon:'Fotod lisanduvad peagi',
     subtitle:'Massöör · Tallinn',grade:'Massöör, 5. tase',tg_btn:'Kirjuta mulle',
     phone_btn:'Helista',bot_btn:'Telegram Bot',book_btn:'Broneeri seanss',
     choose_service:'Vali teenus',duration:'Kestus',min:'min',
@@ -661,7 +662,7 @@ const T={
     review_sent:'Aitäh arvustuse eest!'
   },
   en:{
-    nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',nav_gallery:'Gallery',
+    nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',nav_gallery:'Gallery',gallery_soon:'Photos coming soon',
     subtitle:'Massage therapist · Tallinn',grade:'Massage therapist, Level 5',tg_btn:'Message me',
     phone_btn:'Call me',bot_btn:'Telegram Bot',book_btn:'Book a session',
     choose_service:'Choose a service',duration:'Duration',min:'min',
@@ -1073,9 +1074,11 @@ async function cancelMyBooking(id){
 }
 
 // ── GALLERY ────────────────────────────────────────────────────────────────
-const GALLERY=['sergey.jpg','1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg','7.jpg'];
+// Файлы из папки images/, например: ['gallery-1.jpg','gallery-2.jpg']
+const GALLERY=[];
 let lbIndex=0;
 (function renderGallery(){
+  document.getElementById('gallery-empty').style.display=GALLERY.length?'none':'block';
   document.getElementById('gallery-grid').innerHTML=GALLERY.map((f,i)=>
     `<button class="gallery-item" onclick="openLightbox(${i})" aria-label="Photo ${i+1}"><img src="/images/${f}" alt="" loading="lazy" decoding="async" ${i===0?'style="object-position:50% 12%"':''}></button>`).join('');
 })();
