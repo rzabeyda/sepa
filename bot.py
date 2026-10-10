@@ -3,6 +3,7 @@ import calendar
 import os
 import re
 import sqlite3
+import urllib.parse
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -1084,7 +1085,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
                             f"Промокод на скидку 30% вы оба получите после того как друг завершит свой первый визит 💕")
                     except Exception as _e: print(f"[WARN] {_e}")
                     await message.answer(
-                        f"🎀 Ты пришла по реферальной ссылке подруги!\n\n"
+                        f"🎀 Тебя пригласил друг!\n\n"
                         f"После твоего первого визита к Сергею вы оба получите промокод на скидку *30%* 💆\n\n"
                         f"Записывайся — и бонус придёт автоматически!",
                         parse_mode="Markdown")
@@ -1317,6 +1318,15 @@ async def friends_back(call: types.CallbackQuery):
     await call.message.answer("💆 Коллеги Сергея\n\nВыберите мастера 👇", reply_markup=kb)
     await call.answer()
 
+def _share_kb(ref_link, book_btn=False):
+    share_text = "Запишись к Сергею на массаж по моей ссылке — после первого визита мы оба получим скидку 30% 🎁"
+    share_url = "https://t.me/share/url?url=" + urllib.parse.quote(ref_link, safe="") + "&text=" + urllib.parse.quote(share_text, safe="")
+    rows = []
+    if book_btn:
+        rows.append([InlineKeyboardButton(text="📅 Записаться со скидкой", callback_data="promo_book")])
+    rows.append([InlineKeyboardButton(text="📤 Отправить другу", url=share_url)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 @dp.message(F.text.in_({"🎁 Скидка 30%", "🎁 Промокод"}))   # "🎁 Промокод" — старое название
 async def btn_referral(message: types.Message):
     user_id = message.from_user.id
@@ -1326,17 +1336,21 @@ async def btn_referral(message: types.Message):
     expired = [v for v in vouchers if not v["used"] and v.get("expired")]
     used = [v for v in vouchers if v["used"]]
 
+    rules = ("📌 Промокод действует 180 дней и применяется один раз — на одну запись.\n"
+             "Ввести его можно при оформлении записи.")
+
     if not vouchers:
         await message.answer(
             f"🎁 *Бонусы и скидки*\n\n"
             f"Приведи друга к Сергею — и вы оба получите промокод на *скидку 30%* на любую услугу! 🤝\n\n"
             f"Как это работает:\n"
-            f"1️⃣ Скопируй свою ссылку ниже\n"
-            f"2️⃣ Отправь другу\n"
-            f"3️⃣ Когда он запишется и сходит на процедуру — оба получат промокод на скидку 30% на любую услугу\n"
-            f"4️⃣ При записи введи промокод и получи скидку\n\n"
-            f"Твоя ссылка:\n*{ref_link}*",
-            parse_mode="Markdown")
+            f"1️⃣ Нажми «Отправить другу» — ссылка уйдёт ему в чат\n"
+            f"2️⃣ Друг записывается и приходит на первый визит\n"
+            f"3️⃣ После визита вы оба получаете промокод −30%\n"
+            f"4️⃣ Введи его при записи — цена снизится сразу\n\n"
+            f"{rules}\n\n"
+            f"Твоя ссылка (нажми, чтобы скопировать):\n`{ref_link}`",
+            parse_mode="Markdown", reply_markup=_share_kb(ref_link))
         return
 
     text = f"🎁 *Мои бонусы*\n\n"
@@ -1359,12 +1373,18 @@ async def btn_referral(message: types.Message):
     if used:
         text += f"✔️ Использовано: {len(used)} промокод(ов)\n\n"
 
-    text += f"📌 Чтобы применить промокод — введи код при оформлении записи.\n\n"
+    text += f"{rules}\n\n"
     text += f"━━━━━━━━━━━━━━━━━\n"
     text += f"🎁 *Как получить ещё?*\n"
-    text += f"Поделись ссылкой с другом — когда он запишется, вы оба получите новый промокод -30%!\n\n"
-    text += f"Твоя ссылка:\n*{ref_link}*"
-    await message.answer(text, parse_mode="Markdown")
+    text += f"Отправь ссылку другу — после его первого визита вы оба получите новый промокод −30%!\n\n"
+    text += f"Твоя ссылка (нажми, чтобы скопировать):\n`{ref_link}`"
+    await message.answer(text, parse_mode="Markdown", reply_markup=_share_kb(ref_link, book_btn=bool(active)))
+
+@dp.callback_query(F.data == "promo_book")
+async def promo_book(call: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await call.message.answer("Выбери услугу 👇", reply_markup=main_menu_kb())
+    await call.answer()
 
 @dp.callback_query(F.data == "show_portfolio")
 async def cb_portfolio(call: types.CallbackQuery):
@@ -1671,14 +1691,14 @@ async def enter_phone(message: types.Message, state: FSMContext):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➡️ Без промокода", callback_data="skip_voucher")],
         [InlineKeyboardButton(text="🎁 Ввести промокод", callback_data="enter_voucher")]])
-    await message.answer("🎁 Есть промокод на скидку?\n\nВведите код или продолжите без него:", reply_markup=kb)
+    await message.answer("🎁 Есть промокод на скидку?\n\nВведи код или продолжи без него:", reply_markup=kb)
     await state.set_state(Booking.voucher)
 
 @dp.callback_query(F.data == "enter_voucher", Booking.voucher)
 async def ask_voucher_code(call: types.CallbackQuery, state: FSMContext):
     cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➡️ Без промокода", callback_data="skip_voucher")]])
-    await call.message.answer("Введите промокод (например: SERGEY-X7K2):", reply_markup=cancel_kb)
+    await call.message.answer("Введи промокод (например: SERGEY-X7K2):", reply_markup=cancel_kb)
     await call.answer()
 
 @dp.callback_query(F.data == "skip_voucher", Booking.voucher)
@@ -1694,11 +1714,15 @@ async def process_voucher_code(message: types.Message, state: FSMContext):
     if not voucher:
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="➡️ Без промокода", callback_data="skip_voucher")]])
-        await message.answer("❌ Промокод не найден. Проверьте код и попробуйте снова:", reply_markup=kb); return
+        await message.answer("❌ Промокод не найден. Проверь код и попробуй снова:", reply_markup=kb); return
     if voucher["used"]:
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="➡️ Без промокода", callback_data="skip_voucher")]])
         await message.answer("❌ Этот промокод уже использован.", reply_markup=kb); return
+    if voucher.get("expired"):
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➡️ Без промокода", callback_data="skip_voucher")]])
+        await message.answer("⏰ Срок действия этого промокода истёк (он действует 180 дней).", reply_markup=kb); return
     await state.update_data(voucher_code=code, voucher_discount=voucher["discount_pct"])
     data = await state.get_data()
     svc = get_service(data.get("service", ""))
