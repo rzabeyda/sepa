@@ -178,6 +178,7 @@
   .review-card{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px;break-inside:avoid;}
   .review-stars{color:var(--gold);font-size:15px;letter-spacing:3px;margin-bottom:12px;}
   .review-text{font-family:var(--serif);color:var(--text);font-size:19px;line-height:1.45;margin-bottom:14px;}
+  .page-cta{display:block;width:100%;max-width:360px;margin:36px auto 0;}
   .rev-translate{display:inline-flex;align-items:center;gap:6px;margin:0 0 14px;padding:7px 12px;border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--gold2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:border-color .2s,background .2s,transform .12s;}
   .rev-translate:hover{border-color:var(--gold);background:var(--gold-dim);}
   .rev-translate:active{transform:scale(.96);}
@@ -561,6 +562,7 @@
     <p class="section-title" data-t="nav_gallery">Galerii</p>
     <div class="gallery-grid" id="gallery-grid"></div>
     <div class="empty-state" id="gallery-empty" data-t="gallery_soon" style="display:none">Fotod lisanduvad peagi</div>
+    <button class="btn btn-primary page-cta" onclick="goBook()" data-t="book_btn">Broneeri seanss</button>
   </div>
 </div>
 
@@ -591,6 +593,7 @@
       <button class="btn btn-primary" id="btn-submit-review" onclick="submitReview()" data-t="submit_review">Saada arvustus</button>
     </div>
     <div id="reviews-list">...</div>
+    <button class="btn btn-primary page-cta" onclick="goBook()" data-t="book_btn">Broneeri seanss</button>
   </div>
 </div>
 
