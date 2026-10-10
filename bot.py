@@ -1344,9 +1344,7 @@ async def cb_portfolio(call: types.CallbackQuery):
 async def btn_chat(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/SKF_Massage")],
-        [InlineKeyboardButton(text="📍 Как добраться", url="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn")],
-        [InlineKeyboardButton(text="📷 Instagram", url="https://www.instagram.com/sergey.kolesnikov.7140"),
-         InlineKeyboardButton(text="🎵 TikTok", url="https://www.tiktok.com/@serega.17..31")]])
+        [InlineKeyboardButton(text="📍 Как добраться", url="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn")]])
     await message.answer(
         "💬 Связаться с Сергеем\n\n"
         "📍 Linnamäe tee 24, Tallinn\n"
