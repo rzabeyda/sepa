@@ -669,6 +669,16 @@ def get_all_blocked_slots():
 CONTACTS_FULL  = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
 CONTACTS_SHORT = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
 
+# ── Благодарность мастеру (вместо чаевых в Telegram Stars) ─────────────────────
+# Заполни хотя бы одно из двух — тогда в боте появится кнопка «💝 Отблагодарить»,
+# а старые чаевые в Stars скроются. Пока оба пустые — работает прежняя схема со Stars.
+TIP_LINK = ""        # ссылка на оплату: Revolut.me / PayPal.me / ссылка из банка и т.п.
+TIP_IBAN = ""        # IBAN для банковского перевода, например "EE00 0000 0000 0000 0000"
+TIP_RECIPIENT = "SKF-MASSAGE OÜ"   # получатель перевода
+
+def tip_enabled():
+    return bool(TIP_LINK or TIP_IBAN)
+
 MONTHS = {1:"Январь",2:"Февраль",3:"Март",4:"Апрель",5:"Май",6:"Июнь",
           7:"Июль",8:"Август",9:"Сентябрь",10:"Октябрь",11:"Ноябрь",12:"Декабрь"}
 MONTHS_GEN = {1:"Января",2:"Февраля",3:"Марта",4:"Апреля",5:"Мая",6:"Июня",
@@ -1458,15 +1468,32 @@ async def cb_portfolio(call: types.CallbackQuery):
 
 @dp.message(F.text.in_({"💬 Связаться", "💬 Написать"}))   # "💬 Написать" — старое название
 async def btn_chat(message: types.Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
+    rows = [
         [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/SKF_Massage")],
-        [InlineKeyboardButton(text="📍 Как добраться", url="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn")]])
+        [InlineKeyboardButton(text="📍 Как добраться", url="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn")]]
+    if tip_enabled():
+        rows.append([InlineKeyboardButton(text="💝 Отблагодарить Сергея", callback_data="tip_thanks")])
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
     await message.answer(
         "💬 Связаться с Сергеем\n\n"
         "📍 Linnamäe tee 24, Tallinn\n"
         "📞 +372 53 730 882\n"
         "✈️ Telegram: @SKF_Massage",
         reply_markup=kb)
+
+@dp.callback_query(F.data == "tip_thanks")
+async def tip_thanks(call: types.CallbackQuery):
+    if not tip_enabled():
+        await call.answer("Скоро появится 💝", show_alert=True); return
+    text = "💝 Спасибо, что хочешь отблагодарить Сергея!\n\nСумма любая — как сама посчитаешь нужным."
+    if TIP_IBAN:
+        text += f"\n\n🏦 Банковский перевод:\nПолучатель: {TIP_RECIPIENT}\nIBAN: `{TIP_IBAN}`\n(нажми на IBAN, чтобы скопировать)"
+    rows = []
+    if TIP_LINK:
+        rows.append([InlineKeyboardButton(text="💳 Перевести онлайн", url=TIP_LINK)])
+    rows.append([InlineKeyboardButton(text="❌ Закрыть", callback_data="tip_close")])
+    await call.message.answer(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    await call.answer()
 
 @dp.callback_query(F.data.startswith("tip_open:"))
 async def tip_open(call: types.CallbackQuery):
@@ -2383,7 +2410,10 @@ def tip_amounts_kb(bid):
 def review_rating_kb(bid):
     stars=["⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"]
     rows=[[InlineKeyboardButton(text=s, callback_data=f"rev_rating:{bid}:{i+1}")] for i,s in enumerate(stars)]
-    rows.append([InlineKeyboardButton(text="💝 Чаевые мастеру", callback_data=f"tip_open:{bid}")])
+    if tip_enabled():
+        rows.append([InlineKeyboardButton(text="💝 Отблагодарить", callback_data="tip_thanks")])
+    else:
+        rows.append([InlineKeyboardButton(text="💝 Чаевые мастеру", callback_data=f"tip_open:{bid}")])
     rows.append([InlineKeyboardButton(text="❌ Пропустить", callback_data="rev_skip")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
