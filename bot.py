@@ -157,6 +157,7 @@ def migrate_db():
         ("reviews",   "username",       "ALTER TABLE reviews ADD COLUMN username TEXT DEFAULT ''"),
         ("services",  "description",    "ALTER TABLE services ADD COLUMN description TEXT DEFAULT ''"),
         ("bookings",  "duration_min",   "ALTER TABLE bookings ADD COLUMN duration_min INTEGER"),
+        ("bookings",  "price_eur",      "ALTER TABLE bookings ADD COLUMN price_eur INTEGER"),
     ]
     for table, col, stmt in alter_stmts:
         if not column_exists(con, table, col):
@@ -215,6 +216,14 @@ def migrate_db():
     ]:
         try: con.execute(stmt); con.commit()
         except Exception as _e: print(f"[WARN] {_e}")
+    # completed_bookings создаётся строкой выше, поэтому колонки добавляем уже после неё
+    for col, stmt in [
+        ("duration_min", "ALTER TABLE completed_bookings ADD COLUMN duration_min INTEGER"),
+        ("price_eur",    "ALTER TABLE completed_bookings ADD COLUMN price_eur INTEGER"),
+    ]:
+        if not column_exists(con, "completed_bookings", col):
+            try: con.execute(stmt); con.commit()
+            except Exception as _e: print(f"[WARN] {_e}")
     con.close()
 
 migrate_db()
@@ -484,11 +493,11 @@ def delete_service_db(sid):
     con.execute("DELETE FROM services WHERE id=?", (sid,))
     con.commit(); con.close()
 
-def add_booking(user_id, service, year, month, day, time, name, phone, duration_min=None):
+def add_booking(user_id, service, year, month, day, time, name, phone, duration_min=None, price_eur=None):
     con = db_connect(); cur = con.cursor()
     cur.execute(
-        "INSERT INTO bookings (user_id,service,year,month,day,time,name,phone,duration_min) VALUES (?,?,?,?,?,?,?,?,?)",
-        (user_id,service,year,month,day,time,name,phone,duration_min)
+        "INSERT INTO bookings (user_id,service,year,month,day,time,name,phone,duration_min,price_eur) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (user_id,service,year,month,day,time,name,phone,duration_min,price_eur)
     ); bid = cur.lastrowid; con.commit(); con.close(); return bid
 
 def remove_booking(bid):
@@ -498,9 +507,9 @@ def log_completed_booking(b):
     """Сохраняем завершённую бронь для корректного учёта выручки."""
     con = db_connect()
     con.execute(
-        "INSERT INTO completed_bookings (user_id,service,year,month,day,time,name,phone,completed_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO completed_bookings (user_id,service,year,month,day,time,name,phone,completed_at,duration_min,price_eur) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (b["user_id"], b["service"], b["year"], b["month"], b["day"], b["time"], b["name"], b["phone"],
-         now_tallinn().strftime("%Y-%m-%d %H:%M"))
+         now_tallinn().strftime("%Y-%m-%d %H:%M"), b.get("duration_min"), b.get("price_eur"))
     )
     con.commit(); con.close()
 
@@ -527,7 +536,8 @@ def _row_to_booking(row):
             "day":row[5],"time":row[6],"name":row[7],"phone":row[8],
             "reminded_24":row[9],"reminded_2":row[10],"review_sent":row[11] if len(row)>11 else 0,
             "rebooking_sent":row[12] if len(row)>12 else 0,
-            "duration_min":row[13] if len(row)>13 else None}
+            "duration_min":row[13] if len(row)>13 else None,
+            "price_eur":row[14] if len(row)>14 else None}
 
 def log_cancellation(b, cancelled_by):
     con = db_connect()
@@ -556,6 +566,18 @@ def get_service_price_int(service_name):
     if not svc: return 0
     m = re.search(r"(\d+)", svc["price"]); return int(m.group(1)) if m else 0
 
+def _booking_price_eur(service, duration_min, price_eur):
+    """Реальная цена визита: сохранённая при записи; для старых записей — по длительности (90 мин = 50€)."""
+    if price_eur is not None:
+        return price_eur
+    if duration_min == 90:
+        return 50
+    return get_service_price_int(service)
+
+def _revenue(con, where="", params=()):
+    q = "SELECT service,duration_min,price_eur FROM completed_bookings" + (f" WHERE {where}" if where else "")
+    return sum(_booking_price_eur(r[0], r[1], r[2]) for r in con.execute(q, params).fetchall())
+
 def get_stats():
     con = db_connect(); s = {}
     now = now_tallinn()
@@ -567,10 +589,9 @@ def get_stats():
     s["avg_rating"] = round(avg,1) if avg else 0
     rows = con.execute("SELECT service,COUNT(*) FROM completed_bookings GROUP BY service ORDER BY COUNT(*) DESC").fetchall()
     s["by_service"] = rows
-    s["total_revenue"] = sum(get_service_price_int(r[0]) for r in con.execute("SELECT service FROM completed_bookings").fetchall())
-    s["revenue_by_service"] = {svc:get_service_price_int(svc)*cnt for svc,cnt in rows}
-    s["month_revenue"] = sum(get_service_price_int(r[0]) for r in con.execute(
-        "SELECT service FROM completed_bookings WHERE year=? AND month=?", (now.year,now.month)).fetchall())
+    s["total_revenue"] = _revenue(con)
+    s["revenue_by_service"] = {svc:_revenue(con, "service=?", (svc,)) for svc,cnt in rows}
+    s["month_revenue"] = _revenue(con, "year=? AND month=?", (now.year,now.month))
     s["cancelled_by_client"] = con.execute("SELECT COUNT(*) FROM cancelled WHERE cancelled_by='client'").fetchone()[0]
     s["cancelled_by_master"] = con.execute("SELECT COUNT(*) FROM cancelled WHERE cancelled_by='master'").fetchone()[0]
     s["last_reviews"] = con.execute("SELECT rating,text,service,created_at FROM reviews ORDER BY id DESC LIMIT 5").fetchall()
@@ -580,8 +601,7 @@ def get_stats_month(year, month):
     con = db_connect(); s = {}
     s["bookings"] = con.execute("SELECT COUNT(*) FROM completed_bookings WHERE year=? AND month=?", (year,month)).fetchone()[0]
     s["cancelled"] = con.execute("SELECT COUNT(*) FROM cancelled WHERE substr(cancelled_at,1,7)=?", (f"{year}-{month:02d}",)).fetchone()[0]
-    s["revenue"] = sum(get_service_price_int(r[0]) for r in con.execute(
-        "SELECT service FROM completed_bookings WHERE year=? AND month=?", (year,month)).fetchall())
+    s["revenue"] = _revenue(con, "year=? AND month=?", (year,month))
     rows = con.execute("SELECT service,COUNT(*) FROM completed_bookings WHERE year=? AND month=? GROUP BY service ORDER BY COUNT(*) DESC", (year,month)).fetchall()
     s["by_service"] = rows
     avg = con.execute("SELECT AVG(rating) FROM reviews WHERE substr(created_at,1,7)=?", (f"{year}-{month:02d}",)).fetchone()[0]
@@ -601,7 +621,7 @@ def get_stats_all():
     s["total_reviews"]   = con.execute("SELECT COUNT(*) FROM reviews").fetchone()[0]
     avg = con.execute("SELECT AVG(rating) FROM reviews").fetchone()[0]
     s["avg_rating"] = round(avg,1) if avg else 0
-    s["total_revenue"] = sum(get_service_price_int(r[0]) for r in con.execute("SELECT service FROM completed_bookings").fetchall())
+    s["total_revenue"] = _revenue(con)
     rows = con.execute("SELECT service,COUNT(*) FROM completed_bookings GROUP BY service ORDER BY COUNT(*) DESC").fetchall()
     s["by_service"] = rows
     s["cancelled_by_client"] = con.execute("SELECT COUNT(*) FROM cancelled WHERE cancelled_by='client'").fetchone()[0]
@@ -945,16 +965,46 @@ def services_edit_kb(bid):
 
 def admin_panel_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📅 На сегодня",     callback_data="admin_today"),
+         InlineKeyboardButton(text="🔜 На завтра",      callback_data="admin_tomorrow")],
         [InlineKeyboardButton(text="📋 Все брони",      callback_data="admin_all"),
-         InlineKeyboardButton(text="📅 На сегодня",     callback_data="admin_today")],
-        [InlineKeyboardButton(text="🗓 Расписание",     callback_data="admin_schedule"),
-         InlineKeyboardButton(text="📊 Статистика",     callback_data="admin_stats")],
-        [InlineKeyboardButton(text="💆 Услуги",         callback_data="admin_services"),
-         InlineKeyboardButton(text="⭐ Отзывы",         callback_data="admin_reviews")],
-        [InlineKeyboardButton(text="👱‍♀️ Коллеги",       callback_data="admin_masters"),
+         InlineKeyboardButton(text="🗓 Расписание",     callback_data="admin_schedule")],
+        [InlineKeyboardButton(text="📊 Статистика",     callback_data="admin_stats"),
+         InlineKeyboardButton(text="💆 Услуги",         callback_data="admin_services")],
+        [InlineKeyboardButton(text="⭐ Отзывы",         callback_data="admin_reviews"),
          InlineKeyboardButton(text="📣 Рассылка",       callback_data="admin_broadcast")],
         [InlineKeyboardButton(text="🎁 Бонусы",         callback_data="admin_vouchers"),
          InlineKeyboardButton(text="🚫 Бан",            callback_data="admin_ban_menu")]])
+
+ADMIN_PAGE_SIZE = 10
+
+def _admin_header():
+    now = now_tallinn(); tom = now + timedelta(days=1)
+    allb = get_all_bookings()
+    today_b = sorted([b for b in allb if (b["year"], b["month"], b["day"]) == (now.year, now.month, now.day)], key=lambda b: b["time"])
+    tom_n = sum(1 for b in allb if (b["year"], b["month"], b["day"]) == (tom.year, tom.month, tom.day))
+    nxt = next((b for b in today_b if b["time"] >= now.strftime("%H:%M")), None)
+    line = f"📅 Сегодня: {len(today_b)}"
+    if nxt: line += f" (ближайшая в {nxt['time']} — {nxt['name']})"
+    return f"🔐 Панель администратора\n\n{line}\n🔜 Завтра: {tom_n}\n📋 Всего броней: {len(allb)}"
+
+def _admin_all_page(page):
+    allb = get_all_bookings()
+    if not allb:
+        return "Броней пока нет.", InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")]])
+    pages = (len(allb) + ADMIN_PAGE_SIZE - 1) // ADMIN_PAGE_SIZE
+    page = max(0, min(page, pages - 1))
+    chunk = allb[page * ADMIN_PAGE_SIZE:(page + 1) * ADMIN_PAGE_SIZE]
+    rows = [[InlineKeyboardButton(text=f"👁 {b['time']} {b['day']} {MONTHS[b['month']]} — {b['name']}", callback_data=f"admin_view:{b['id']}")] for b in chunk]
+    nav = []
+    if page > 0: nav.append(InlineKeyboardButton(text="◀️", callback_data=f"admin_allp:{page-1}"))
+    if pages > 1: nav.append(InlineKeyboardButton(text=f"{page+1}/{pages}", callback_data=f"admin_allp:{page}"))
+    if page < pages - 1: nav.append(InlineKeyboardButton(text="▶️", callback_data=f"admin_allp:{page+1}"))
+    if nav: rows.append(nav)
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")])
+    return f"📋 Все брони ({len(allb)} шт.), стр. {page+1}/{pages}:", InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 
 def admin_friends_kb():
     rows = []
@@ -1484,7 +1534,7 @@ async def successful_payment(message: types.Message):
 @dp.message(F.text == "🔐 Админка")
 async def btn_admin_panel(message: types.Message):
     if message.from_user.id not in ADMIN_IDS: await message.answer("⛔️ Нет доступа."); return
-    await message.answer(f"🔐 Панель администратора\nВсего броней: {len(get_all_bookings())}", reply_markup=admin_panel_kb())
+    await message.answer(_admin_header(), reply_markup=admin_panel_kb())
 
 @dp.callback_query(F.data == "main_menu")
 async def go_main_menu(call: types.CallbackQuery, state: FSMContext):
@@ -1748,7 +1798,11 @@ async def _finalize_booking(message, state, user_id):
         await state.clear(); return
     voucher_code = data.get("voucher_code")
     voucher_discount = data.get("voucher_discount", 0)
-    bid = add_booking(user_id=user_id, service=data["service"], year=yr, month=mon, day=day, time=data["time"], name=data["name"], phone=phone, duration_min=dur)
+    _m = re.search(r"(\d+)", data.get("override_price") or (svc["price"] if svc else "") or "")
+    price_eur = int(_m.group(1)) if _m else None
+    if price_eur is not None and voucher_code and voucher_discount:
+        price_eur = round(price_eur * (1 - voucher_discount / 100))
+    bid = add_booking(user_id=user_id, service=data["service"], year=yr, month=mon, day=day, time=data["time"], name=data["name"], phone=phone, duration_min=dur, price_eur=price_eur)
     b = get_booking(bid)
     # Применяем промокод
     voucher_line = ""
@@ -1795,20 +1849,32 @@ async def admin_view_booking(call: types.CallbackQuery):
     text=f"📋 Бронь #{bid}\n\n💅 {b['service']}\n⏱ ~{dur}\n🕐 {b['time']} | {b['day']} {MONTHS_GEN[b['month']]}\n👤 {b['name']} 📞 {b['phone']}\n{rank} • {visits} {vw}"
     kb=InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"edit_booking:{bid}"),
-         InlineKeyboardButton(text="🗑 Удалить",        callback_data=f"admin_del:{bid}")],
+         InlineKeyboardButton(text="🗑 Отменить",       callback_data=f"admin_delask:{bid}")],
         [InlineKeyboardButton(text="◀️ Назад",          callback_data="admin_all")]])
     await call.message.answer(text, reply_markup=kb); await call.answer()
+
+@dp.callback_query(F.data.startswith("voucher_make:"))
+async def admin_voucher_make(call: types.CallbackQuery):
+    if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
+    pct = int(call.data.split(":")[1])
+    code = create_voucher(0, pct)   # user_id=0: подарочный промокод, не привязан к клиенту
+    if not code:
+        await call.message.answer("❌ Не удалось создать промокод, попробуй ещё раз.")
+    else:
+        await call.message.answer(
+            f"✅ Промокод на скидку {pct}% создан:\n\n`{code}`\n\nОтправь его клиенту. Действует 180 дней, один раз.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ К бонусам", callback_data="admin_vouchers")]]))
+    await call.answer()
 
 @dp.callback_query(F.data.startswith("admin_"))
 async def admin_actions(call: types.CallbackQuery, state: FSMContext):
     if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
     action=call.data
-    if action=="admin_all":
-        all_b=get_all_bookings()
-        if not all_b: await call.message.answer("Броней пока нет."); await call.answer(); return
-        rows=[[InlineKeyboardButton(text=f"👁 {b['time']} {b['day']} {MONTHS[b['month']]} — {b['name']}", callback_data=f"admin_view:{b['id']}")] for b in all_b]
-        rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")])
-        await call.message.answer(f"📋 Все брони ({len(all_b)} шт.):", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    if action=="admin_all" or action.startswith("admin_allp:"):
+        page = int(action.split(":")[1]) if action.startswith("admin_allp:") else 0
+        txt, kb = _admin_all_page(page)
+        await call.message.answer(txt, reply_markup=kb)
     elif action=="admin_today":
         now=now_tallinn(); today_b=[b for b in get_all_bookings() if b["year"]==now.year and b["month"]==now.month and b["day"]==now.day]
         if not today_b: await call.message.answer("Сегодня броней нет.")
@@ -1877,6 +1943,12 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         kb_rows.append([InlineKeyboardButton(text="✍️ Добавить отзыв", callback_data="admin_rev_add")])
         kb_rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")])
         await call.message.answer("⭐ Отзывы клиентов:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+    elif action.startswith("admin_rev_delask:"):
+        rev_id=int(action.split(":")[1])
+        await call.message.answer("❓ Удалить этот отзыв? Это нельзя отменить.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"admin_rev_del:{rev_id}"),
+                 InlineKeyboardButton(text="◀️ Нет",          callback_data=f"admin_rev_open:{rev_id}")]]))
     elif action.startswith("admin_rev_del:"):
         rev_id=int(action.split(":")[1])
         con=db_connect(); con.execute("DELETE FROM reviews WHERE id=?", (rev_id,)); con.commit(); con.close()
@@ -1903,7 +1975,7 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         if rv: text += f"\n💬 {rv}"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"admin_rev_edit:{rev_id}"),
-             InlineKeyboardButton(text="🗑 Удалить", callback_data=f"admin_rev_del:{rev_id}")],
+             InlineKeyboardButton(text="🗑 Удалить", callback_data=f"admin_rev_delask:{rev_id}")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_reviews")]])
         await call.message.answer(text, reply_markup=kb)
     elif action=="admin_rev_add":
@@ -1926,16 +1998,31 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         vouchers = get_all_vouchers()
         if not vouchers:
             await call.message.answer("🎁 Бонусов пока нет.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")]]))
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="➕ Создать промокод", callback_data="admin_voucher_new")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")]]))
         else:
-            active = [v for v in vouchers if not v["used"]]
+            def _vexp(v):
+                try: return (now_tallinn() - datetime.strptime(v["created_at"], "%Y-%m-%d %H:%M")).days > 180
+                except Exception: return False
+            active = [v for v in vouchers if not v["used"] and not _vexp(v)]
+            expired = [v for v in vouchers if not v["used"] and _vexp(v)]
             used = [v for v in vouchers if v["used"]]
-            text = f"🎁 Бонусы\n\n✅ Активных: {len(active)} | ❌ Использованных: {len(used)}\n\n"
+            text = f"🎁 Бонусы\n\n🟢 Активных: {len(active)} | ✅ Использованных: {len(used)} | ⏰ Просроченных: {len(expired)}\n\n"
             for v in vouchers[:20]:
-                status = f"✅ использован {v['used_at']}" if v["used"] else "🟢 активен"
+                if v["used"]: status = f"✅ использован {v['used_at']}"
+                elif _vexp(v): status = "⏰ просрочен"
+                else: status = "🟢 активен"
                 text += f"`{v['code']}` — -{v['discount_pct']}% | {status}\n"
             await call.message.answer(text, parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")]]))
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="➕ Создать промокод", callback_data="admin_voucher_new")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")]]))
+    elif action=="admin_voucher_new":
+        await call.message.answer("➕ Новый промокод — какая скидка?",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=f"{p}%", callback_data=f"voucher_make:{p}") for p in (10, 20, 30, 50)],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_vouchers")]]))
     elif action=="admin_broadcast":
         broadcasts = get_broadcasts()
         users_count = get_users_count()
@@ -1948,7 +2035,16 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         await call.message.answer(f"📣 Рассылка\n\nВсего пользователей: {users_count}\n\nВыберите действие:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
     elif action=="admin_back":
-        await call.message.answer(f"🔐 Панель администратора\nВсего броней: {len(get_all_bookings())}", reply_markup=admin_panel_kb())
+        await call.message.answer(_admin_header(), reply_markup=admin_panel_kb())
+    elif action.startswith("admin_delask:"):
+        bid=int(action.split(":")[1]); b=get_booking(bid)
+        if not b: await call.message.answer("Бронь не найдена.")
+        else:
+            await call.message.answer(
+                f"❓ Отменить бронь?\n\n{format_booking(b)}\n\nКлиент получит уведомление об отмене.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="✅ Да, отменить", callback_data=f"admin_del:{bid}"),
+                     InlineKeyboardButton(text="◀️ Нет",          callback_data=f"admin_view:{bid}")]]))
     elif action.startswith("admin_del:"):
         bid=int(action.split(":")[1]); b=get_booking(bid)
         if b:
