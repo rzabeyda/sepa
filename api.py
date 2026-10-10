@@ -150,6 +150,71 @@ def api_add_review(r: ReviewIn):
     notify_admins(f"⭐ Новый отзыв (с сайта)!\n\n💆 {service}\n{stars}\n👤 {name}" + (f"\n💬 {text}" if text else ""))
     return {"ok": True, "id": cur.lastrowid}
 
+# ── Перевод отзывов (MyMemory, бесплатно). Результат кэшируется в БД: каждый отзыв переводится один раз ──
+import json as _json, time as _time, hashlib as _hashlib, html as _html
+
+class TranslateIn(BaseModel):
+    text: str
+    sl: str = ""
+    tl: str
+
+_TR_RATE = {}   # ip -> время последних запросов (защита лимита MyMemory)
+
+def _tr_chunks(text, limit=450):
+    """MyMemory принимает до ~500 символов за запрос — режем длинный отзыв по предложениям."""
+    parts, cur = [], ""
+    for sent in re.split(r"(?<=[.!?…])\s+", text.strip()):
+        while len(sent) > limit:
+            if cur: parts.append(cur); cur = ""
+            parts.append(sent[:limit]); sent = sent[limit:]
+        if cur and len(cur) + 1 + len(sent) > limit:
+            parts.append(cur); cur = sent
+        else:
+            cur = f"{cur} {sent}".strip()
+    if cur: parts.append(cur)
+    return parts
+
+def _mymemory(chunk, sl, tl):
+    pair = f"{sl or 'Autodetect'}|{tl}"
+    url = "https://api.mymemory.translated.net/get?" + urllib.parse.urlencode({"q": chunk, "langpair": pair})
+    req = urllib.request.Request(url, headers={"User-Agent": "skffmassage-site"})
+    with urllib.request.urlopen(req, timeout=8) as r:
+        d = _json.loads(r.read().decode("utf-8"))
+    out = _html.unescape((d.get("responseData") or {}).get("translatedText") or "")
+    if d.get("responseStatus") != 200 or not out or out.upper().startswith("MYMEMORY WARNING"):
+        raise RuntimeError(d.get("responseDetails") or "translate failed")
+    return out
+
+@app.post("/api/translate")
+def api_translate(t: TranslateIn, request: Request):
+    tl = (t.tl or "").lower(); sl = (t.sl or "").lower()
+    text = (t.text or "").strip()[:1500]
+    if tl not in ("ru", "et", "en") or not text:
+        return {"ok": False}
+    if sl not in ("ru", "et", "en"): sl = ""
+    if sl == tl:
+        return {"ok": True, "text": text}
+    key = _hashlib.sha1(f"{tl}|{text}".encode("utf-8")).hexdigest()
+    con = db()
+    con.execute("CREATE TABLE IF NOT EXISTS translations (key TEXT PRIMARY KEY, tl TEXT, text TEXT, created_at TEXT)")
+    row = con.execute("SELECT text FROM translations WHERE key=?", (key,)).fetchone()
+    if row:
+        con.close(); return {"ok": True, "text": row[0]}
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "?")
+    now = _time.time(); hits = [x for x in _TR_RATE.get(ip, []) if now - x < 60]
+    if len(hits) >= 20:
+        con.close(); return {"ok": False, "error": "Слишком часто, попробуйте через минуту"}
+    hits.append(now); _TR_RATE[ip] = hits
+    try:
+        out = " ".join(_mymemory(c, sl, tl) for c in _tr_chunks(text))
+    except Exception as e:
+        con.close(); print(f"[WARN] translate: {e}")
+        return {"ok": False, "error": "Не удалось перевести"}
+    con.execute("INSERT OR REPLACE INTO translations (key,tl,text,created_at) VALUES (?,?,?,?)",
+                (key, tl, out, now_t().strftime("%Y-%m-%d %H:%M")))
+    con.commit(); con.close()
+    return {"ok": True, "text": out}
+
 @app.get("/api/slots")
 def api_slots(year: int, month: int, day: int, dur_min: int = 60):
     return get_slots(year, month, day, dur_min)

@@ -178,6 +178,10 @@
   .review-card{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px;break-inside:avoid;}
   .review-stars{color:var(--gold);font-size:15px;letter-spacing:3px;margin-bottom:12px;}
   .review-text{font-family:var(--serif);color:var(--text);font-size:19px;line-height:1.45;margin-bottom:14px;}
+  .rev-translate{display:inline-flex;align-items:center;gap:6px;margin:0 0 14px;padding:7px 12px;border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--gold2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:border-color .2s,background .2s,transform .12s;}
+  .rev-translate:hover{border-color:var(--gold);background:var(--gold-dim);}
+  .rev-translate:active{transform:scale(.96);}
+  .rev-translate:disabled{opacity:.6;cursor:default;}
   .review-meta{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;}
   .review-form-box{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:22px;}
   .star-picker{display:flex;gap:8px;font-size:32px;line-height:1;}
@@ -642,7 +646,7 @@ const T={
     biz_exp:'Опыт работы',biz_exp_val:'2+ года',biz_address:'Адрес',
     write_review:'Оставить отзыв',your_rating:'Оценка',review_text_label:'Комментарий',
     submit_review:'Отправить отзыв',select_rating_first:'Сначала выберите оценку',
-    review_sent:'Спасибо за отзыв!',show_more:'Показать ещё'
+    review_sent:'Спасибо за отзыв!',show_more:'Показать ещё',translate:'Перевести',show_original:'Показать оригинал',translate_error:'Не удалось перевести, попробуй позже'
   },
   et:{
     nav_home:'Pealeht',nav_book:'Broneeri',nav_my:'Broneeringud',nav_rev:'Arvustused',nav_gallery:'Galerii',gallery_soon:'Fotod lisanduvad peagi',
@@ -671,7 +675,7 @@ const T={
     biz_exp:'Kogemus',biz_exp_val:'2+ aastat',biz_address:'Aadress',
     write_review:'Jäta arvustus',your_rating:'Hinnang',review_text_label:'Kommentaar',
     submit_review:'Saada arvustus',select_rating_first:'Vali kõigepealt hinnang',
-    review_sent:'Aitäh arvustuse eest!',show_more:'Näita rohkem'
+    review_sent:'Aitäh arvustuse eest!',show_more:'Näita rohkem',translate:'Tõlgi',show_original:'Näita originaali',translate_error:'Tõlkimine ebaõnnestus, proovi hiljem'
   },
   en:{
     nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',nav_gallery:'Gallery',gallery_soon:'Photos coming soon',
@@ -700,7 +704,7 @@ const T={
     biz_exp:'Experience',biz_exp_val:'2+ years',biz_address:'Address',
     write_review:'Leave a review',your_rating:'Rating',review_text_label:'Comment',
     submit_review:'Submit review',select_rating_first:'Please choose a rating first',
-    review_sent:'Thanks for your review!',show_more:'Show more'
+    review_sent:'Thanks for your review!',show_more:'Show more',translate:'Translate',show_original:'Show original',translate_error:'Could not translate, please try later'
   }
 };
 let lang='et';
@@ -973,15 +977,52 @@ function renderReviews(){
   if(!reviewsData.length){el.innerHTML=`<div class="empty-state">${t('no_reviews')}</div>`;return;}
   const shown=reviewsExpanded?reviewsData:reviewsData.slice(0,REVIEWS_SHOWN);
   const rest=reviewsData.length-shown.length;
-  el.innerHTML=`<div class="reviews-cols">`+shown.map(r=>`
+  el.innerHTML=`<div class="reviews-cols">`+shown.map((r,i)=>`
       <div class="review-card">
         <div class="review-stars">${'★'.repeat(r.rating)}</div>
-        ${r.text?`<div class="review-text">${r.text}</div>`:''}
-        <div class="review-meta">${svcName(r.service)} · ${r.username}</div>
+        ${r.text?`<div class="review-text" id="rv-text-${i}">${escHtml(r.text)}</div>`:''}
+        ${r.text&&detectLang(r.text)!==lang?`<button class="rev-translate" id="rv-btn-${i}" onclick="translateReview(${i},this)">🌐 ${t('translate')}</button>`:''}
+        <div class="review-meta">${svcName(r.service)} · ${escHtml(r.username)}</div>
       </div>`).join('')+`</div>`
     +(rest>0?`<button class="btn btn-outline" style="max-width:360px;display:block;margin:8px auto 0" onclick="showAllReviews()">${t('show_more')} (${rest})</button>`:'');
 }
 function showAllReviews(){reviewsExpanded=true;renderReviews();haptic('light');}
+
+// ── Перевод отзыва на язык сайта ───────────────────────────────────────────
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// Грубое определение языка текста: кириллица → ru; эстонские буквы/слова → et; иначе en
+function detectLang(txt){
+  if(/[А-Яа-яЁё]/.test(txt)) return 'ru';
+  if(/[õäöüÕÄÖÜšžŠŽ]/.test(txt)) return 'et';
+  const words=(txt.toLowerCase().match(/[a-z]+/g)||[]);
+  const et=['ja','on','ei','väga','oli','aitäh','tänan','hea','kõik','mul','see','kuid','ning','tore','soovitan','massaaž','kindlasti','jälle'];
+  const en=['the','and','was','very','great','is','it','to','for','good','best','thank','thanks','you','my','amazing','really','recommend'];
+  const e=words.filter(w=>et.includes(w)).length, n=words.filter(w=>en.includes(w)).length;
+  return e>n?'et':'en';
+}
+const reviewTr={};   // индекс отзыва → {lang, text, shown}
+async function translateReview(i,btn){
+  const list=reviewsExpanded?reviewsData:reviewsData.slice(0,REVIEWS_SHOWN), r=list[i];
+  const box=document.getElementById('rv-text-'+i); if(!r||!box) return;
+  const st=reviewTr[i];
+  if(st&&st.lang===lang&&st.text){            // уже переводили на этот язык: переключаем оригинал/перевод
+    st.shown=!st.shown;
+    box.textContent=st.shown?st.text:r.text;
+    btn.textContent='🌐 '+(st.shown?t('show_original'):t('translate'));
+    return;
+  }
+  btn.disabled=true; const old=btn.textContent; btn.textContent='🌐 …';
+  try{
+    const res=await fetch(API+'/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:r.text,sl:detectLang(r.text),tl:lang})});
+    const data=await res.json();
+    if(data.ok&&data.text){
+      reviewTr[i]={lang,text:data.text,shown:true};
+      box.textContent=data.text; btn.textContent='🌐 '+t('show_original');
+    }else{ btn.textContent=old; alert(data.error||t('translate_error')); }
+  }catch(e){ btn.textContent=old; alert(t('translate_error')); }
+  btn.disabled=false;
+}
 
 // ── WRITE A REVIEW (доступно всем, не только после визита) ────────────────
 let selRevRating=0;

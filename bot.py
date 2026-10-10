@@ -856,7 +856,9 @@ def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
 
 def short_svc(name):
     """Для надписей на кнопках: «Классический массаж» → «Классический м-ж» (иначе не влезает). В базе и в callback_data имя остаётся полным."""
-    return re.sub(r"[Мм]ассаж", "м-ж", name or "")
+    name = name or ""
+    # короткие названия («Тайский массаж», «Спортивный массаж») помещаются целиком — сокращаем только длинные
+    return re.sub(r"[Мм]ассаж", "м-ж", name) if len(name) > 17 else name
 
 def main_menu_kb():
     rows = []
