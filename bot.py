@@ -857,13 +857,13 @@ def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
 def short_svc(name):
     """Для надписей на кнопках: «Классический массаж» → «Классический м-ж» (иначе не влезает). В базе и в callback_data имя остаётся полным."""
     name = name or ""
-    # короткие названия («Тайский массаж», «Спортивный массаж») помещаются целиком — сокращаем только длинные
-    return re.sub(r"[Мм]ассаж", "м-ж", name) if len(name) > 17 else name
+    # самое короткое название («Тайский массаж») помещается целиком — сокращаем остальные
+    return re.sub(r"[Мм]ассаж", "м-ж", name) if len(name) > 16 else name
 
 def main_menu_kb():
     rows = []
     for s in get_services_db():
-        rows.append([InlineKeyboardButton(text=f"{short_svc(s['name'])} — 60 мин {s['price']} · 90 мин 50€", callback_data=f"svc:{s['name']}")])
+        rows.append([InlineKeyboardButton(text=f"{short_svc(s['name'])} — 60м {s['price']} · 90м 50€", callback_data=f"svc:{s['name']}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def months_kb(year):
@@ -1675,8 +1675,8 @@ async def service_choice(call: types.CallbackQuery, state: FSMContext):
     year=now_tallinn().year; await state.update_data(service=service_name,year=year)
     photo=FSInputFile(os.path.join(BASE_DIR, svc["img"]))
     dur_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⏱ 60 мин — 35€", callback_data="dur:60:35€")],
-        [InlineKeyboardButton(text="⏱ 90 мин — 50€", callback_data="dur:90:50€")],
+        [InlineKeyboardButton(text="⏱ 60м — 35€", callback_data="dur:60:35€")],
+        [InlineKeyboardButton(text="⏱ 90м — 50€", callback_data="dur:90:50€")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
     ])
     desc = (svc.get("description") or "").strip()
