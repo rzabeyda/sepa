@@ -2594,7 +2594,7 @@ async def stats_all_handler(call: types.CallbackQuery):
     text += f"⭐ Отзывов: {s['total_reviews']}"
     if s["avg_rating"]: text += f" | {s['avg_rating']} ⭐"
     text += f"\n💰 Общая выручка: {s['total_revenue']}€"
-    text += f"\n⭐ Чаевые за всё время: {s.get('tips_count',0)} раз | {s.get('tips_stars',0)} ⭐ ≈ {s.get('tips_eur',0.0)}€"
+    if s.get('tips_count',0): text += f"\n⭐ Чаевые за всё время: {s.get('tips_count',0)} раз | {s.get('tips_stars',0)} ⭐ ≈ {s.get('tips_eur',0.0)}€"
     if s["by_service"]:
         text += "\n\n💅 По услугам:\n"
         for svc_name, cnt in s["by_service"]:
