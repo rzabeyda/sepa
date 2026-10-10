@@ -827,8 +827,8 @@ def format_booking(b, idx=None, username=None):
 def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     has_booking = bool(user_id and get_user_bookings(user_id))
     broni_btn = KeyboardButton(text="✅ Брони") if has_booking else KeyboardButton(text="🗓 Брони")
-    row1 = [KeyboardButton(text="💆 Услуги"), broni_btn, KeyboardButton(text="🎁 Промокод")]
-    row2 = [KeyboardButton(text="💬 Написать"), KeyboardButton(text="🖼 Галерея"), KeyboardButton(text="⭐ Отзывы")]
+    row1 = [KeyboardButton(text="📅 Запись"), broni_btn, KeyboardButton(text="🎁 Скидка 30%")]
+    row2 = [KeyboardButton(text="🖼 Галерея"), KeyboardButton(text="⭐ Отзывы"), KeyboardButton(text="💬 Связаться")]
     buttons = [row1, row2]
     if is_admin: buttons.append([KeyboardButton(text="🔐 Админка")])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
@@ -1107,7 +1107,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         reply_markup=main_menu_kb()
     )
 
-@dp.message(F.text == "💆 Услуги")
+@dp.message(F.text.in_({"📅 Запись", "💆 Услуги"}))   # "💆 Услуги" — старое название, для тех у кого ещё старая клавиатура
 async def btn_services(message: types.Message, state: FSMContext):
     await state.clear(); await message.answer("Выберите услугу 👇", reply_markup=main_menu_kb())
 
@@ -1278,7 +1278,7 @@ async def friends_back(call: types.CallbackQuery):
     await call.message.answer("💆 Коллеги Сергея\n\nВыберите мастера 👇", reply_markup=kb)
     await call.answer()
 
-@dp.message(F.text == "🎁 Промокод")
+@dp.message(F.text.in_({"🎁 Скидка 30%", "🎁 Промокод"}))   # "🎁 Промокод" — старое название
 async def btn_referral(message: types.Message):
     user_id = message.from_user.id
     ref_link = f"https://t.me/{(await bot.get_me()).username}?start=ref_{user_id}"
@@ -1340,11 +1340,19 @@ async def cb_portfolio(call: types.CallbackQuery):
         media = [types.InputMediaPhoto(media=FSInputFile(path)) for path in chunk]
         await call.message.answer_media_group(media=media)
 
-@dp.message(F.text == "💬 Написать")
+@dp.message(F.text.in_({"💬 Связаться", "💬 Написать"}))   # "💬 Написать" — старое название
 async def btn_chat(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/SKF_Massage")]])
-    await message.answer("💬 Выбери как удобнее:", reply_markup=kb)
+        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/SKF_Massage")],
+        [InlineKeyboardButton(text="📍 Как добраться", url="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn")],
+        [InlineKeyboardButton(text="📷 Instagram", url="https://www.instagram.com/sergey.kolesnikov.7140"),
+         InlineKeyboardButton(text="🎵 TikTok", url="https://www.tiktok.com/@serega.17..31")]])
+    await message.answer(
+        "💬 Связаться с Сергеем\n\n"
+        "📍 Linnamäe tee 24, Tallinn\n"
+        "📞 +372 53 730 882\n"
+        "✈️ Telegram: @SKF_Massage",
+        reply_markup=kb)
 
 @dp.callback_query(F.data.startswith("tip_open:"))
 async def tip_open(call: types.CallbackQuery):
