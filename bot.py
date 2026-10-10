@@ -854,10 +854,14 @@ def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     if is_admin: buttons.append([KeyboardButton(text="🔐 Админка")])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
+def short_svc(name):
+    """Для надписей на кнопках: «Классический массаж» → «Классический м-ж» (иначе не влезает). В базе и в callback_data имя остаётся полным."""
+    return re.sub(r"[Мм]ассаж", "м-ж", name or "")
+
 def main_menu_kb():
     rows = []
     for s in get_services_db():
-        rows.append([InlineKeyboardButton(text=f"{s['name']} — 60 мин {s['price']} · 90 мин 50€", callback_data=f"svc:{s['name']}")])
+        rows.append([InlineKeyboardButton(text=f"{short_svc(s['name'])} — 60 мин {s['price']} · 90 мин 50€", callback_data=f"svc:{s['name']}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def months_kb(year):
@@ -959,7 +963,7 @@ def edit_options_kb(bid):
 def services_edit_kb(bid):
     rows = []
     for s in get_services_db():
-        rows.append([InlineKeyboardButton(text=f"{s['name']} — {s['price']} (~{s['duration']})", callback_data=f"esvc:{bid}:{s['name']}")])
+        rows.append([InlineKeyboardButton(text=f"{short_svc(s['name'])} — {s['price']} (~{s['duration']})", callback_data=f"esvc:{bid}:{s['name']}")])
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data=f"edit_booking:{bid}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -1025,7 +1029,7 @@ def admin_services_kb():
     rows = []
     for s in get_all_services_db():
         icon = "✅" if s["active"] else "❌"
-        rows.append([InlineKeyboardButton(text=f"{icon} {s['name']} — {s['price']} ({s['duration']})", callback_data=f"svc_manage:{s['id']}")])
+        rows.append([InlineKeyboardButton(text=f"{icon} {short_svc(s['name'])} — {s['price']} ({s['duration']})", callback_data=f"svc_manage:{s['id']}")])
     rows.append([InlineKeyboardButton(text="➕ Добавить услугу", callback_data="svc_add")])
     rows.append([InlineKeyboardButton(text="◀️ Назад",           callback_data="admin_back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -1276,7 +1280,7 @@ async def reviews_more(call: types.CallbackQuery):
 async def wr_start(call: types.CallbackQuery, state: FSMContext):
     services = get_services_db()  # только активные — Сегментарный/Лечебный сюда не попадают
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=s["name"], callback_data=f"wr_svc:{s['name']}")]
+        [InlineKeyboardButton(text=short_svc(s["name"]), callback_data=f"wr_svc:{s['name']}")]
         for s in services])
     await state.set_state(WriteReview.service)
     await call.message.answer("На какую услугу оставите отзыв?", reply_markup=kb)
@@ -2446,7 +2450,7 @@ async def admin_rev_add_rating(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(AdminReview.add_service)
     services = get_all_services_db()
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=s["name"], callback_data=f"admin_rev_svc:{s['name']}")]
+        [InlineKeyboardButton(text=short_svc(s["name"]), callback_data=f"admin_rev_svc:{s['name']}")]
         for s in services])
     await call.message.answer("Выберите услугу для отзыва:", reply_markup=kb)
     await call.answer()
