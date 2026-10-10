@@ -642,7 +642,7 @@ const T={
     biz_exp:'Опыт работы',biz_exp_val:'2+ года',biz_address:'Адрес',
     write_review:'Оставить отзыв',your_rating:'Оценка',review_text_label:'Комментарий',
     submit_review:'Отправить отзыв',select_rating_first:'Сначала выберите оценку',
-    review_sent:'Спасибо за отзыв!'
+    review_sent:'Спасибо за отзыв!',show_more:'Показать ещё'
   },
   et:{
     nav_home:'Pealeht',nav_book:'Broneeri',nav_my:'Broneeringud',nav_rev:'Arvustused',nav_gallery:'Galerii',gallery_soon:'Fotod lisanduvad peagi',
@@ -671,7 +671,7 @@ const T={
     biz_exp:'Kogemus',biz_exp_val:'2+ aastat',biz_address:'Aadress',
     write_review:'Jäta arvustus',your_rating:'Hinnang',review_text_label:'Kommentaar',
     submit_review:'Saada arvustus',select_rating_first:'Vali kõigepealt hinnang',
-    review_sent:'Aitäh arvustuse eest!'
+    review_sent:'Aitäh arvustuse eest!',show_more:'Näita rohkem'
   },
   en:{
     nav_home:'Home',nav_book:'Book',nav_my:'Bookings',nav_rev:'Reviews',nav_gallery:'Gallery',gallery_soon:'Photos coming soon',
@@ -700,7 +700,7 @@ const T={
     biz_exp:'Experience',biz_exp_val:'2+ years',biz_address:'Address',
     write_review:'Leave a review',your_rating:'Rating',review_text_label:'Comment',
     submit_review:'Submit review',select_rating_first:'Please choose a rating first',
-    review_sent:'Thanks for your review!'
+    review_sent:'Thanks for your review!',show_more:'Show more'
   }
 };
 let lang='et';
@@ -782,6 +782,7 @@ function setLang(l){
   if(botBtn) botBtn.style.display = (lang==='ru') ? 'flex' : 'none';
   if(calYear) renderCalendar();
   if(services.length) renderServicesHTML();
+  if(reviewsLoaded) renderReviews();
 }
 
 // ── PAGES ──────────────────────────────────────────────────────────────────
@@ -958,21 +959,29 @@ async function confirmBooking(){
 }
 
 // ── REVIEWS ────────────────────────────────────────────────────────────────
-let reviewsLoaded=false;
+let reviewsLoaded=false,reviewsData=[],reviewsExpanded=false;
+const REVIEWS_SHOWN=5;   // сколько последних отзывов показываем сразу, остальные — по кнопке
 async function loadReviews(){
   if(reviewsLoaded)return;
   try{
-    const reviews=await fetch(API+'/api/reviews').then(r=>r.json()); reviewsLoaded=true;
-    const el=document.getElementById('reviews-list');
-    if(!reviews.length){el.innerHTML=`<div class="empty-state">${t('no_reviews')}</div>`;return;}
-    el.classList.add('reviews-cols');el.innerHTML=reviews.map(r=>`
+    reviewsData=await fetch(API+'/api/reviews').then(r=>r.json()); reviewsLoaded=true; reviewsExpanded=false;
+    renderReviews();
+  }catch(e){document.getElementById('reviews-list').innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
+}
+function renderReviews(){
+  const el=document.getElementById('reviews-list');
+  if(!reviewsData.length){el.innerHTML=`<div class="empty-state">${t('no_reviews')}</div>`;return;}
+  const shown=reviewsExpanded?reviewsData:reviewsData.slice(0,REVIEWS_SHOWN);
+  const rest=reviewsData.length-shown.length;
+  el.innerHTML=`<div class="reviews-cols">`+shown.map(r=>`
       <div class="review-card">
         <div class="review-stars">${'★'.repeat(r.rating)}</div>
         ${r.text?`<div class="review-text">${r.text}</div>`:''}
         <div class="review-meta">${svcName(r.service)} · ${r.username}</div>
-      </div>`).join('');
-  }catch(e){document.getElementById('reviews-list').innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
+      </div>`).join('')+`</div>`
+    +(rest>0?`<button class="btn btn-outline" style="max-width:360px;display:block;margin:8px auto 0" onclick="showAllReviews()">${t('show_more')} (${rest})</button>`:'');
 }
+function showAllReviews(){reviewsExpanded=true;renderReviews();haptic('light');}
 
 // ── WRITE A REVIEW (доступно всем, не только после визита) ────────────────
 let selRevRating=0;

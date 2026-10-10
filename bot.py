@@ -1158,29 +1158,68 @@ def write_review_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✍️ Оставить отзыв", callback_data="wr_start")]])
 
-@dp.message(F.text == "⭐ Отзывы")
-async def btn_reviews(message: types.Message):
+REVIEWS_SHOWN = 5   # сколько последних отзывов показываем сразу, остальные — по кнопке
+
+def _review_block(row):
+    rating, rv, svc_name = row[0], row[1], row[2]
+    # "@" в username уже добавлен при сохранении отзыва, если это реальный
+    # тг-хэндл — здесь просто показываем как есть, без угадывания.
+    username = row[4] if len(row) > 4 and row[4] else "Аноним"
+    block = f"{'⭐' * rating} — {svc_name}\n👤 {username}"
+    if rv:
+        block += f"\n💬 {rv}"
+    return block
+
+def _chunk_reviews(blocks, header=""):
+    """Склеивает отзывы в сообщения не длиннее лимита Telegram (4096 символов)."""
+    chunks, cur = [], header
+    for b in blocks:
+        if cur and len(cur) + len(b) + 2 > 3800:
+            chunks.append(cur.strip()); cur = ""
+        cur += b + "\n\n"
+    if cur.strip():
+        chunks.append(cur.strip())
+    return chunks
+
+def _reviews_kb(more=0):
+    rows = []
+    if more > 0:
+        rows.append([InlineKeyboardButton(text=f"📖 Показать ещё ({more})", callback_data="rev_more")])
+    rows.append([InlineKeyboardButton(text="✍️ Оставить отзыв", callback_data="wr_start")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+def _all_reviews():
     con = db_connect()
     rows = con.execute(
-        "SELECT rating, text, service, created_at, username FROM reviews ORDER BY id DESC LIMIT 20"
+        "SELECT rating, text, service, created_at, username FROM reviews ORDER BY id DESC LIMIT 200"
     ).fetchall()
     con.close()
+    return rows
+
+@dp.message(F.text == "⭐ Отзывы")
+async def btn_reviews(message: types.Message):
+    rows = _all_reviews()
     if not rows:
         await message.answer("😊 Отзывов пока нет — будьте первым!", reply_markup=write_review_kb())
         return
-    text = "⭐ Отзывы клиентов:\n\n"
-    for row in rows:
-        rating, rv, svc_name, created_at = row[0], row[1], row[2], row[3]
-        # "@" в username уже добавлен при сохранении отзыва, если это реальный
-        # тг-хэндл — здесь просто показываем как есть, без угадывания.
-        username = row[4] if len(row) > 4 and row[4] else "Аноним"
-        stars = "⭐" * rating
-        text += f"{stars} — {svc_name}\n"
-        text += f"👤 {username}\n"
-        if rv:
-            text += f"💬 {rv}"
-        text += "\n\n"
-    await message.answer(text.strip(), reply_markup=write_review_kb())
+    first, rest = rows[:REVIEWS_SHOWN], rows[REVIEWS_SHOWN:]
+    chunks = _chunk_reviews([_review_block(r) for r in first], "⭐ Последние отзывы клиентов:\n\n")
+    for i, c in enumerate(chunks):
+        last = (i == len(chunks) - 1)
+        await message.answer(c, reply_markup=_reviews_kb(len(rest)) if last else None)
+
+@dp.callback_query(F.data == "rev_more")
+async def reviews_more(call: types.CallbackQuery):
+    rows = _all_reviews()[REVIEWS_SHOWN:]
+    # на сообщении с кнопкой оставляем только «Оставить отзыв»
+    try:
+        await call.message.edit_reply_markup(reply_markup=write_review_kb())
+    except Exception:
+        pass
+    chunks = _chunk_reviews([_review_block(r) for r in rows], "📖 Остальные отзывы:\n\n")
+    for i, c in enumerate(chunks):
+        await call.message.answer(c, reply_markup=write_review_kb() if i == len(chunks) - 1 else None)
+    await call.answer()
 
 @dp.callback_query(F.data == "wr_start")
 async def wr_start(call: types.CallbackQuery, state: FSMContext):

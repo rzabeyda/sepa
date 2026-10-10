@@ -55,7 +55,7 @@ def get_services():
 
 def get_reviews():
     con = db()
-    rows = con.execute("SELECT rating,text,service,created_at,username FROM reviews ORDER BY id DESC LIMIT 20").fetchall(); con.close()
+    rows = con.execute("SELECT rating,text,service,created_at,username FROM reviews ORDER BY id DESC LIMIT 100").fetchall(); con.close()
     return [{"rating":r[0],"text":r[1] or "","service":r[2],"date":r[3][:10] if r[3] else "","username":r[4] or "Аноним"} for r in rows]
 
 # Тот же график работы, что и в bot.py (WORK_SCHEDULE) — держим в одном месте
