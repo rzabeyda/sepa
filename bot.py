@@ -74,15 +74,6 @@ def init_db():
             price TEXT NOT NULL, duration TEXT NOT NULL, duration_min INTEGER NOT NULL,
             img TEXT NOT NULL, sort_order INTEGER DEFAULT 0, active INTEGER DEFAULT 1, description TEXT DEFAULT ''
         );
-        CREATE TABLE IF NOT EXISTS friends (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            specialty TEXT NOT NULL,
-            description TEXT NOT NULL,
-            link TEXT NOT NULL,
-            photo_id TEXT NOT NULL,
-            sort_order INTEGER DEFAULT 0
-        );
         CREATE TABLE IF NOT EXISTS bot_users (
             user_id INTEGER PRIMARY KEY,
             username TEXT DEFAULT '',
@@ -204,15 +195,6 @@ def migrate_db():
             phone TEXT NOT NULL,
             completed_at TEXT NOT NULL
         )""",
-        """CREATE TABLE IF NOT EXISTS friends (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            specialty TEXT NOT NULL,
-            description TEXT NOT NULL,
-            link TEXT NOT NULL,
-            photo_id TEXT NOT NULL,
-            sort_order INTEGER DEFAULT 0
-        )""",
     ]:
         try: con.execute(stmt); con.commit()
         except Exception as _e: print(f"[WARN] {_e}")
@@ -227,32 +209,6 @@ def migrate_db():
     con.close()
 
 migrate_db()
-
-# ── Friends DB helpers ────────────────────────────────────────────────────────
-def get_all_friends():
-    con = db_connect()
-    rows = con.execute("SELECT * FROM friends ORDER BY sort_order, id").fetchall()
-    con.close()
-    cols = ["id","name","specialty","description","link","photo_id","sort_order"]
-    return [dict(zip(cols, r)) for r in rows]
-
-def get_friend(fid):
-    con = db_connect()
-    row = con.execute("SELECT * FROM friends WHERE id=?", (fid,)).fetchone()
-    con.close()
-    if not row: return None
-    return dict(zip(["id","name","specialty","description","link","photo_id","sort_order"], row))
-
-def add_friend(name, specialty, description, link, photo_id):
-    con = db_connect()
-    con.execute("INSERT INTO friends (name,specialty,description,link,photo_id) VALUES (?,?,?,?,?)",
-                (name, specialty, description, link, photo_id))
-    con.commit(); con.close()
-
-def delete_friend(fid):
-    con = db_connect()
-    con.execute("DELETE FROM friends WHERE id=?", (fid,))
-    con.commit(); con.close()
 
 # ── Bot users ─────────────────────────────────────────────────────────────────
 def register_user(user_id, username="", first_name=""):
@@ -666,7 +622,6 @@ def get_all_blocked_slots():
     for date,time in rows: result.setdefault(date,[]).append(time)
     return result
 
-CONTACTS_FULL  = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
 CONTACTS_SHORT = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
 
 MONTHS = {1:"Январь",2:"Февраль",3:"Март",4:"Апрель",5:"Май",6:"Июнь",
@@ -691,12 +646,6 @@ class WriteReview(StatesGroup):
     """Свободный отзыв, не привязанный к брони — доступен любому в любое время."""
     service=State(); rating=State(); text=State()
 
-class TipState(StatesGroup):
-    amount = State()
-
-class TipCustom(StatesGroup):
-    amount = State()
-
 class AdminReview(StatesGroup):
     text=State(); add_text=State(); add_rating=State(); add_service=State()
 
@@ -705,9 +654,6 @@ class AddService(StatesGroup):
 
 class EditService(StatesGroup):
     value=State(); img=State()
-
-class AddFriend(StatesGroup):
-    photo=State(); name=State(); specialty=State(); description=State(); link=State()
 
 class Broadcast(StatesGroup):
     text=State(); btn_text=State(); btn_url=State(); confirm=State()
@@ -733,10 +679,6 @@ def booking_duration(b):
     (клиент мог выбрать 60 или 90 мин), а для старых записей без него
     откатываемся на длительность услуги по умолчанию."""
     return b.get("duration_min") or duration_minutes(get_service(b["service"]))
-
-def get_end_time(start_slot, dur_min):
-    h,m = int(start_slot.split(":")[0]), int(start_slot.split(":")[1])
-    total = h*60+m+dur_min; return f"{total//60:02d}:{total%60:02d}"
 
 # Расписание работы по дням недели (0=Пн ... 6=Вс)
 WORK_SCHEDULE = {
@@ -1012,21 +954,6 @@ def _admin_all_page(page):
     return f"📋 Все брони ({len(allb)} шт.), стр. {page+1}/{pages}:", InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
-def admin_friends_kb():
-    rows = []
-    for f in get_all_friends():
-        rows.append([InlineKeyboardButton(
-            text=f"👤 {f['name']} — {f['specialty']}",
-            callback_data=f"friend_manage:{f['id']}")])
-    rows.append([InlineKeyboardButton(text="➕ Добавить друга", callback_data="friend_add")])
-    rows.append([InlineKeyboardButton(text="◀️ Назад",          callback_data="admin_back")])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-def friend_manage_kb(fid):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🗑 Удалить",  callback_data=f"friend_delete:{fid}")],
-        [InlineKeyboardButton(text="◀️ Назад",    callback_data="admin_masters")]])
 
 def admin_services_kb():
     rows = []
@@ -1353,27 +1280,6 @@ async def btn_gallery(message: types.Message):
         sent += 1
     if not sent:
         await message.answer("🖼 *Галерея*\n\nФото скоро появятся 💆", parse_mode="Markdown")
-
-@dp.callback_query(F.data.startswith("friend_view:"))
-async def friend_view(call: types.CallbackQuery):
-    fid = int(call.data.split(":")[1])
-    f = get_friend(fid)
-    if not f:
-        await call.answer("Не найдено", show_alert=True); return
-    caption = f"👤 *{f['name']}*\n💼 {f['specialty']}\n\n{f['description']}\n\n🔗 {f['link']}"
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="masters_back")]])
-    await call.message.answer_photo(photo=f['photo_id'], caption=caption, parse_mode="Markdown", reply_markup=kb)
-    await call.answer()
-
-@dp.callback_query(F.data == "masters_back")
-async def friends_back(call: types.CallbackQuery):
-    friends = get_all_friends()
-    rows = []
-    for f in friends:
-        rows.append([InlineKeyboardButton(text=f"👤 {f['name']} — {f['specialty']}", callback_data=f"friend_view:{f['id']}")])
-    kb = InlineKeyboardMarkup(inline_keyboard=rows)
-    await call.message.answer("💆 Коллеги Сергея\n\nВыберите мастера 👇", reply_markup=kb)
-    await call.answer()
 
 def _share_kb(ref_link, book_btn=False):
     share_text = "Запишись к Сергею на массаж по моей ссылке — после первого визита мы оба получим скидку 30% 🎁"
@@ -1950,8 +1856,6 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         await state.set_state(AdminReview.add_text)
         await call.message.answer("✍️ Введите текст отзыва от мастера:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Отмена", callback_data="admin_reviews")]]))
-    elif action=="admin_masters":
-        await call.message.answer("💅 Управление мастерами:", reply_markup=admin_friends_kb())
     elif action=="admin_ban_menu":
         banned = get_banned_users()
         kb_rows = [[InlineKeyboardButton(text="🚫 Забанить по @username", callback_data="ban_start")]]
@@ -2023,84 +1927,6 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         else: await call.message.answer("Бронь не найдена.")
     await call.answer()
 
-# ── Friends admin handlers ────────────────────────────────────────────────────
-@dp.callback_query(F.data.startswith("friend_manage:"))
-async def friend_manage(call: types.CallbackQuery):
-    if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
-    fid = int(call.data.split(":")[1])
-    f = get_friend(fid)
-    if not f: await call.answer("Не найдено", show_alert=True); return
-    text = f"👤 {f['name']} — {f['specialty']}\n\n{f['description']}\n\n🔗 {f['link']}"
-    await call.message.answer_photo(photo=f['photo_id'], caption=text, reply_markup=friend_manage_kb(fid))
-    await call.answer()
-
-@dp.callback_query(F.data.startswith("friend_delete:"))
-async def friend_delete(call: types.CallbackQuery):
-    if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
-    fid = int(call.data.split(":")[1])
-    delete_friend(fid)
-    await call.message.answer("✅ Друг удалён.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ К списку", callback_data="admin_masters")]]))
-    await call.answer()
-
-@dp.callback_query(F.data == "friend_add")
-async def friend_add_start(call: types.CallbackQuery, state: FSMContext):
-    if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
-    await state.set_state(AddFriend.photo)
-    await call.message.answer("📸 Отправьте фото мастера:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Отмена", callback_data="admin_masters")]]))
-    await call.answer()
-
-@dp.message(AddFriend.photo, F.photo)
-async def friend_add_photo(message: types.Message, state: FSMContext):
-    photo_id = message.photo[-1].file_id
-    await state.update_data(photo_id=photo_id)
-    await state.set_state(AddFriend.name)
-    await message.answer("✍️ Введите имя мастера (например: Анна):",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Отмена", callback_data="admin_masters")]]))
-
-@dp.message(AddFriend.name)
-async def friend_add_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text.strip())
-    await state.set_state(AddFriend.specialty)
-    await message.answer("💼 Введите специализацию (например: мастер по губам):",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Отмена", callback_data="admin_masters")]]))
-
-@dp.message(AddFriend.specialty)
-async def friend_add_specialty(message: types.Message, state: FSMContext):
-    await state.update_data(specialty=message.text.strip())
-    await state.set_state(AddFriend.description)
-    await message.answer("📝 Введите описание мастера (кратко о работах, стиле):",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Отмена", callback_data="admin_masters")]]))
-
-@dp.message(AddFriend.description)
-async def friend_add_description(message: types.Message, state: FSMContext):
-    await state.update_data(description=message.text.strip())
-    await state.set_state(AddFriend.link)
-    await message.answer("🔗 Введите ссылку на бота или сайт (например: https://t.me/username):",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="❌ Отмена", callback_data="admin_masters")]]))
-
-@dp.message(AddFriend.link)
-async def friend_add_link(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    await state.update_data(link=message.text.strip())
-    data = await state.get_data()
-    # Показываем предпросмотр
-    caption = f"👤 *{data['name']}* — {data['specialty']}\n\n{data['description']}\n\n🔗 {data['link']}"
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Сохранить", callback_data="friend_confirm"),
-         InlineKeyboardButton(text="❌ Отмена", callback_data="admin_masters")]])
-    await message.answer_photo(photo=data['photo_id'], caption=caption, parse_mode="Markdown", reply_markup=kb)
-
-@dp.callback_query(F.data == "friend_confirm")
-async def friend_confirm(call: types.CallbackQuery, state: FSMContext):
-    if call.from_user.id not in ADMIN_IDS: await call.answer("⛔️", show_alert=True); return
-    data = await state.get_data()
-    await state.clear()
-    add_friend(data['name'], data['specialty'], data['description'], data['link'], data['photo_id'])
-    await call.message.answer(f"✅ Мастер {data['name']} добавлен! 👯",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ К списку", callback_data="admin_masters")]]))
-    await call.answer()
 # ─────────────────────────────────────────────────────────────────────────────
 
 @dp.callback_query(F.data.startswith("svc_manage:"))
