@@ -110,13 +110,6 @@ def init_db():
             banned_at TEXT NOT NULL,
             reason TEXT DEFAULT ''
         );
-        CREATE TABLE IF NOT EXISTS tips (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            username TEXT DEFAULT '',
-            stars INTEGER NOT NULL,
-            created_at TEXT NOT NULL
-        );
         CREATE TABLE IF NOT EXISTS completed_bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -155,13 +148,6 @@ def migrate_db():
             try: con.execute(stmt); con.commit()
             except Exception as _e: print(f"[WARN] {_e}")
     for stmt in [
-        """CREATE TABLE IF NOT EXISTS tips (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            username TEXT DEFAULT '',
-            stars INTEGER NOT NULL,
-            created_at TEXT NOT NULL
-        )""",
         """CREATE TABLE IF NOT EXISTS bot_users (
             user_id INTEGER PRIMARY KEY,
             username TEXT DEFAULT '',
@@ -563,10 +549,6 @@ def get_stats_month(year, month):
     avg = con.execute("SELECT AVG(rating) FROM reviews WHERE substr(created_at,1,7)=?", (f"{year}-{month:02d}",)).fetchone()[0]
     s["avg_rating"] = round(avg,1) if avg else 0
     s["reviews"] = con.execute("SELECT COUNT(*) FROM reviews WHERE substr(created_at,1,7)=?", (f"{year}-{month:02d}",)).fetchone()[0]
-    tips_rows = con.execute("SELECT stars FROM tips WHERE substr(created_at,1,7)=?", (f"{year}-{month:02d}",)).fetchall()
-    s["tips_count"] = len(tips_rows)
-    s["tips_stars"] = sum(r[0] for r in tips_rows)
-    s["tips_eur"] = round(s["tips_stars"] * 0.013, 2)
     con.close(); return s
 
 def get_stats_all():
@@ -582,10 +564,6 @@ def get_stats_all():
     s["by_service"] = rows
     s["cancelled_by_client"] = con.execute("SELECT COUNT(*) FROM cancelled WHERE cancelled_by='client'").fetchone()[0]
     s["cancelled_by_master"] = con.execute("SELECT COUNT(*) FROM cancelled WHERE cancelled_by='master'").fetchone()[0]
-    tips_rows = con.execute("SELECT stars FROM tips").fetchall()
-    s["tips_count"] = len(tips_rows)
-    s["tips_stars"] = sum(r[0] for r in tips_rows)
-    s["tips_eur"] = round(s["tips_stars"] * 0.013, 2)
     con.close(); return s
 
 def get_client_visits(user_id):
@@ -1375,36 +1353,6 @@ async def btn_chat(message: types.Message):
         "✈️ Telegram: @SKF_Massage",
         reply_markup=kb)
 
-# Чаевые убраны. Заглушка нужна только для старых сообщений, где кнопка ещё осталась.
-@dp.callback_query(F.data.startswith(("tip_open:", "tip_send:", "tip_custom:", "tip_thanks")))
-async def tips_disabled(call: types.CallbackQuery):
-    await call.answer("Эта функция отключена. Спасибо, что были у нас! 💆", show_alert=True)
-
-@dp.callback_query(F.data == "tip_close")
-async def tip_close(call: types.CallbackQuery):
-    try: await call.message.delete()
-    except Exception: pass
-    await call.answer()
-
-@dp.pre_checkout_query()
-async def pre_checkout(query: types.PreCheckoutQuery):
-    await query.answer(ok=True)
-
-@dp.message(F.successful_payment)
-async def successful_payment(message: types.Message):
-    stars = message.successful_payment.total_amount
-    username = message.from_user.username or message.from_user.first_name or ""
-    # Сохраняем чаевые в БД
-    con = db_connect()
-    con.execute("INSERT INTO tips (user_id, username, stars, created_at) VALUES (?,?,?,?)",
-        (message.from_user.id, username, stars, now_tallinn().strftime("%Y-%m-%d %H:%M")))
-    con.commit(); con.close()
-    await message.answer(f"🙏 Спасибо за {stars} ⭐! Сергей очень рад 💆")
-    for _aid in ADMIN_IDS:
-        try:
-            await bot.send_message(_aid, f"💝 Новые чаевые! {stars} ⭐ от @{username}")
-        except Exception as _e: print(f"[WARN] {_e}")
-
 @dp.message(F.text == "🔐 Админка")
 async def btn_admin_panel(message: types.Message):
     if message.from_user.id not in ADMIN_IDS: await message.answer("⛔️ Нет доступа."); return
@@ -1777,7 +1725,6 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
         text+=f"⭐ Отзывов: {s['reviews']}"
         if s["avg_rating"]: text+=f" | {s['avg_rating']} ⭐"
         text+=f"\n💰 Выручка: {s['revenue']}€"
-        if s.get('tips_count',0): text+=f"\n⭐ Чаевые: {s.get('tips_count',0)} раз | {s.get('tips_stars',0)} ⭐ ≈ {s.get('tips_eur',0)}€"
         if s["by_service"]:
             text+="\n\n💅 По услугам:\n"
             for svc_name,cnt in s["by_service"]:
@@ -2390,7 +2337,6 @@ async def stats_month_handler(call: types.CallbackQuery):
     text += f"⭐ Отзывов: {s['reviews']}"
     if s["avg_rating"]: text += f" | {s['avg_rating']} ⭐"
     text += f"\n💰 Выручка: {s['revenue']}€"
-    if s.get('tips_count',0): text += f"\n⭐ Чаевые: {s.get('tips_count',0)} раз | {s.get('tips_stars',0)} ⭐ ≈ {s.get('tips_eur',0.0)}€"
     if s["by_service"]:
         text += "\n\n💅 По услугам:\n"
         for svc_name, cnt in s["by_service"]:
@@ -2420,7 +2366,6 @@ async def stats_all_handler(call: types.CallbackQuery):
     text += f"⭐ Отзывов: {s['total_reviews']}"
     if s["avg_rating"]: text += f" | {s['avg_rating']} ⭐"
     text += f"\n💰 Общая выручка: {s['total_revenue']}€"
-    if s.get('tips_count',0): text += f"\n⭐ Чаевые за всё время: {s.get('tips_count',0)} раз | {s.get('tips_stars',0)} ⭐ ≈ {s.get('tips_eur',0.0)}€"
     if s["by_service"]:
         text += "\n\n💅 По услугам:\n"
         for svc_name, cnt in s["by_service"]:
