@@ -58,31 +58,25 @@ def get_reviews():
     rows = con.execute("SELECT rating,text,service,created_at,username FROM reviews ORDER BY id DESC LIMIT 100").fetchall(); con.close()
     return [{"rating":r[0],"text":r[1] or "","service":r[2],"date":r[3][:10] if r[3] else "","username":r[4] or "Аноним"} for r in rows]
 
-# Тот же график работы, что и в bot.py (WORK_SCHEDULE) — держим в одном месте
+# Тот же график работы, что и в bot.py (WORK_DAYS, FIXED_SLOTS) — держим в одном месте
 # логику, но значения должны совпадать 1-в-1, иначе сайт и бот будут расходиться.
-WORK_SCHEDULE = {
-    0: (17, 19),  # Понедельник
-    2: (17, 19),  # Среда
-    4: (17, 19),  # Пятница
-    5: (12, 18),  # Суббота — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
-    # Вторник, четверг и воскресенье — не рабочие дни (нет в словаре).
-}
+# Рабочие дни (0=Пн ... 6=Вс): Пн, Ср, Пт, Сб. Вторник, четверг и воскресенье — выходные.
+# Совпадает 1-в-1 с bot.py.
+WORK_DAYS = {0, 2, 4, 5}
 
-# По субботам запись возможна только на эти 4 времени — никакого
-# почасового диапазона, как в будни. Совпадает 1-в-1 с bot.py.
-WEEKEND_FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
-_WEEKEND_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in WEEKEND_FIXED_SLOTS)
-_WEEKEND_CLOSE_MIN = _WEEKEND_SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
+# Во все рабочие дни запись возможна только на эти 4 времени (время НАЧАЛА сеанса).
+# Никакого почасового диапазона и полу-часовых слотов.
+FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
+_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in FIXED_SLOTS)
+_CLOSE_MIN = _SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
 
 REST_MINUTES = 30  # отдых Сергею после каждого массажа — то же значение, что в bot.py
 
 def get_slots(year, month, day, dur_min):
     now = now_t(); key = f"{year}-{month:02d}-{day:02d}"
     weekday = datetime(year, month, day).weekday()
-    if weekday not in WORK_SCHEDULE:
+    if weekday not in WORK_DAYS:
         return []
-    start_hour, end_hour = WORK_SCHEDULE[weekday]
-    is_weekend_fixed = weekday == 5
     con = db()
     if con.execute("SELECT date FROM schedule WHERE type='day' AND date=?", (key,)).fetchone():
         con.close(); return []
@@ -97,18 +91,11 @@ def get_slots(year, month, day, dur_min):
         h,m = int(btime.split(":")[0]), int(btime.split(":")[1])
         booked.append((h*60+m, h*60+m+bdurmin+REST_MINUTES))
     def free(start, dur):
-        close_min = _WEEKEND_CLOSE_MIN if is_weekend_fixed else end_hour*60
-        if start + dur > close_min: return False
+        if start + dur > _CLOSE_MIN: return False
         for bs,be in booked:
             if start < be and start+dur > bs: return False
         return f"{start//60:02d}:{start%60:02d}" not in blocked_slots
-    if is_weekend_fixed:
-        candidates = list(_WEEKEND_SLOT_MIN)
-    else:
-        candidates = list(range(start_hour*60, end_hour*60+1, 60))
-        for _, be in booked:
-            if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
-                candidates.append(be)
+    candidates = list(_SLOT_MIN)
     if year==now.year and month==now.month and day==now.day:
         candidates = [c for c in candidates if c > now.hour*60+now.minute]
     return [f"{c//60:02d}:{c%60:02d}" for c in sorted(set(c for c in candidates if free(c, dur_min)))]

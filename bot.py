@@ -606,7 +606,7 @@ MONTHS = {1:"Январь",2:"Февраль",3:"Март",4:"Апрель",5:"�
           7:"Июль",8:"Август",9:"Сентябрь",10:"Октябрь",11:"Ноябрь",12:"Декабрь"}
 MONTHS_GEN = {1:"Января",2:"Февраля",3:"Марта",4:"Апреля",5:"Мая",6:"Июня",
               7:"Июля",8:"Августа",9:"Сентября",10:"Октября",11:"Ноября",12:"Декабря"}
-TIME_SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"]
+TIME_SLOTS = ["12:00","14:00","16:00","18:00"]
 
 class Booking(StatesGroup):
     service=State(); duration=State(); year=State(); month=State(); day=State(); time=State(); name=State(); phone=State(); voucher=State()
@@ -659,29 +659,23 @@ def booking_duration(b):
     return b.get("duration_min") or duration_minutes(get_service(b["service"]))
 
 # Расписание работы по дням недели (0=Пн ... 6=Вс)
-WORK_SCHEDULE = {
-    0: (17, 19),  # Понедельник
-    2: (17, 19),  # Среда
-    4: (17, 19),  # Пятница
-    5: (12, 18),  # Суббота — только фиксированные слоты, см. WEEKEND_FIXED_SLOTS
-    # Вторник, четверг и воскресенье — не рабочие дни (нет в словаре).
-}
+# Рабочие дни (0=Пн ... 6=Вс): Пн, Ср, Пт, Сб. Вторник, четверг и воскресенье — выходные.
+# Совпадает 1-в-1 с api.py.
+WORK_DAYS = {0, 2, 4, 5}
 
-# По субботам запись возможна только на эти 4 времени — никакого
-# почасового диапазона, как в будни. Совпадает 1-в-1 с api.py.
-WEEKEND_FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
-_WEEKEND_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in WEEKEND_FIXED_SLOTS)
-_WEEKEND_CLOSE_MIN = _WEEKEND_SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
+# Во все рабочие дни запись возможна только на эти 4 времени (время НАЧАЛА сеанса).
+# Никакого почасового диапазона и полу-часовых слотов.
+FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
+_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in FIXED_SLOTS)
+_CLOSE_MIN = _SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
 
 def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     now = now_tallinn()
     key = date_key(year, month, day)
 
     weekday = datetime(year, month, day).weekday()
-    if weekday not in WORK_SCHEDULE:
+    if weekday not in WORK_DAYS:
         return []
-    start_hour, end_hour = WORK_SCHEDULE[weekday]
-    is_weekend_fixed = weekday == 5
 
     manual_blocked = set()
     for slot in get_blocked_slots_for_date(key):
@@ -697,20 +691,13 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
         booked.append((h*60+m, h*60+m+dur))
 
     def is_free(start, dur):
-        close_min = _WEEKEND_CLOSE_MIN if is_weekend_fixed else end_hour*60
-        if start + dur > close_min: return False
+        if start + dur > _CLOSE_MIN: return False
         for bs, be in booked:
             if start < be and start+dur > bs: return False
         if start in manual_blocked: return False
         return True
 
-    if is_weekend_fixed:
-        candidates = list(_WEEKEND_SLOT_MIN)
-    else:
-        candidates = list(range(start_hour*60, end_hour*60+1, 60))
-        for _, be in booked:
-            if be % 60 == 30 and start_hour*60 <= be <= end_hour*60:
-                candidates.append(be)
+    candidates = list(_SLOT_MIN)
 
     if year == now.year and month == now.month and day == now.day:
         now_min = now.hour * 60 + now.minute
@@ -1062,8 +1049,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         photo=photo,
         caption=(
             "*Сергей — мастер массажа в Таллине* 💆\n\n"
-            "⏱ Пн, Ср, Пт: 17:00–19:00\n"
-            "⏱ Сб: запись на 12:00, 14:00, 16:00, 18:00\n\n"
+            "⏱ Пн, Ср, Пт, Сб: запись на 12:00, 14:00, 16:00, 18:00\n\n"
             "Запишитесь онлайн — это займёт 1 минуту 👇"
         ),
         parse_mode="Markdown",
