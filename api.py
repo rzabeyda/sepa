@@ -72,15 +72,26 @@ _CLOSE_MIN = _SLOT_MIN[-1] + 90  # последний слот + макс. дл�
 
 REST_MINUTES = 30  # отдых Сергею после каждого массажа — то же значение, что в bot.py
 
+def is_open_all():
+    """Режим «Открыто всё» (включается в админке бота): любые дни, ручные блокировки не действуют."""
+    con = db()
+    try:
+        row = con.execute("SELECT value FROM settings WHERE key='open_all'").fetchone()
+    except sqlite3.OperationalError:   # таблицу создаёт бот при запуске
+        row = None
+    con.close()
+    return bool(row and row[0] == "1")
+
 def get_slots(year, month, day, dur_min):
     now = now_t(); key = f"{year}-{month:02d}-{day:02d}"
+    open_all = is_open_all()
     weekday = datetime(year, month, day).weekday()
-    if weekday not in WORK_DAYS:
+    if weekday not in WORK_DAYS and not open_all:
         return []
     con = db()
-    if con.execute("SELECT date FROM schedule WHERE type='day' AND date=?", (key,)).fetchone():
+    if not open_all and con.execute("SELECT date FROM schedule WHERE type='day' AND date=?", (key,)).fetchone():
         con.close(); return []
-    blocked_slots = set(r[0] for r in con.execute("SELECT time FROM schedule WHERE type='slot' AND date=?", (key,)).fetchall())
+    blocked_slots = set() if open_all else set(r[0] for r in con.execute("SELECT time FROM schedule WHERE type='slot' AND date=?", (key,)).fetchall())
     bookings = con.execute("SELECT time,service,duration_min FROM bookings WHERE year=? AND month=? AND day=?", (year,month,day)).fetchall()
     con.close()
     booked = []

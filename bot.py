@@ -148,6 +148,10 @@ def migrate_db():
             try: con.execute(stmt); con.commit()
             except Exception as _e: print(f"[WARN] {_e}")
     for stmt in [
+        """CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )""",
         """CREATE TABLE IF NOT EXISTS bot_users (
             user_id INTEGER PRIMARY KEY,
             username TEXT DEFAULT '',
@@ -591,6 +595,25 @@ def unblock_slot(date, time):
 def get_blocked_days():
     con = db_connect(); rows = con.execute("SELECT date FROM schedule WHERE type='day'").fetchall(); con.close(); return [r[0] for r in rows]
 
+def get_setting(key, default=""):
+    con = db_connect()
+    try:
+        row = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    except sqlite3.OperationalError:
+        row = None
+    con.close()
+    return row[0] if row else default
+
+def set_setting(key, value):
+    con = db_connect()
+    con.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)", (key, str(value)))
+    con.commit(); con.close()
+
+def is_open_all():
+    """Режим «Открыто всё»: запись возможна на любые дни, ручные блокировки временно не действуют.
+    Сами блокировки не удаляются — при выключении режима они снова вступают в силу."""
+    return get_setting("open_all", "0") == "1"
+
 def get_blocked_slots_for_date(date):
     con = db_connect(); rows = con.execute("SELECT time FROM schedule WHERE type='slot' AND date=?", (date,)).fetchall(); con.close(); return [r[0] for r in rows]
 
@@ -643,7 +666,8 @@ class FindByPhone(StatesGroup):
     phone=State()
 
 def date_key(year, month, day): return f"{year}-{month:02d}-{day:02d}"
-def is_day_blocked(year, month, day): return date_key(year,month,day) in get_blocked_days()
+def is_day_blocked(year, month, day):
+    return (not is_open_all()) and date_key(year,month,day) in get_blocked_days()
 
 def duration_minutes(svc):
     if not svc: return 60
@@ -673,14 +697,16 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     now = now_tallinn()
     key = date_key(year, month, day)
 
+    open_all = is_open_all()
     weekday = datetime(year, month, day).weekday()
-    if weekday not in WORK_DAYS:
+    if weekday not in WORK_DAYS and not open_all:
         return []
 
     manual_blocked = set()
-    for slot in get_blocked_slots_for_date(key):
-        h, m = int(slot.split(":")[0]), int(slot.split(":")[1])
-        manual_blocked.add(h*60+m)
+    if not open_all:
+        for slot in get_blocked_slots_for_date(key):
+            h, m = int(slot.split(":")[0]), int(slot.split(":")[1])
+            manual_blocked.add(h*60+m)
 
     booked = []
     for b in get_all_bookings():
@@ -878,6 +904,7 @@ def services_edit_kb(bid):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def admin_panel_kb():
+    open_label = "🔒 Вернуть расписание" if is_open_all() else "🔓 Открыть всё"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📅 На сегодня",     callback_data="admin_today"),
          InlineKeyboardButton(text="🔜 На завтра",      callback_data="admin_tomorrow")],
@@ -888,7 +915,8 @@ def admin_panel_kb():
         [InlineKeyboardButton(text="⭐ Отзывы",         callback_data="admin_reviews"),
          InlineKeyboardButton(text="📣 Рассылка",       callback_data="admin_broadcast")],
         [InlineKeyboardButton(text="🎁 Бонусы",         callback_data="admin_vouchers"),
-         InlineKeyboardButton(text="🚫 Бан",            callback_data="admin_ban_menu")]])
+         InlineKeyboardButton(text="🚫 Бан",            callback_data="admin_ban_menu")],
+        [InlineKeyboardButton(text=open_label,          callback_data="admin_open_all")]])
 
 ADMIN_PAGE_SIZE = 10
 
@@ -900,7 +928,8 @@ def _admin_header():
     nxt = next((b for b in today_b if b["time"] >= now.strftime("%H:%M")), None)
     line = f"📅 Сегодня: {len(today_b)}"
     if nxt: line += f" (ближайшая в {nxt['time']} — {nxt['name']})"
-    return f"🔐 Панель администратора\n\n{line}\n🔜 Завтра: {tom_n}\n📋 Всего броней: {len(allb)}"
+    mode = "\n\n🔓 Режим «Открыто всё» ВКЛЮЧЁН: запись открыта на любые дни" if is_open_all() else ""
+    return f"🔐 Панель администратора\n\n{line}\n🔜 Завтра: {tom_n}\n📋 Всего броней: {len(allb)}{mode}"
 
 def _admin_all_page(page):
     allb = get_all_bookings()
@@ -1690,6 +1719,18 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
             rows=[[InlineKeyboardButton(text=f"👁 {b['time']} — {b['name']} | {b['service'][:20]}", callback_data=f"admin_view:{b['id']}")] for b in today_b]
             rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")])
             await call.message.answer(f"📅 Сегодня ({now.day} {MONTHS[now.month]}):", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    elif action=="admin_open_all":
+        now_on = not is_open_all()
+        set_setting("open_all", "1" if now_on else "0")
+        if now_on:
+            await call.message.answer(
+                "🔓 Открыто всё!\n\nТеперь клиенты могут записаться на любые дни (пн–вс) и любое из четырёх времён. "
+                "Закрытые тобой дни и часы временно не действуют, но они сохранены.\n\n"
+                "Нажми «Вернуть расписание», чтобы всё закрыть обратно.")
+        else:
+            await call.message.answer(
+                "🔒 Расписание возвращено.\n\nСнова действуют рабочие дни (пн, ср, пт, сб) и те дни и часы, которые ты закрыл.")
+        await call.message.answer(_admin_header(), reply_markup=admin_panel_kb())
     elif action=="admin_tomorrow":
         tom=now_tallinn()+timedelta(days=1); tom_b=[b for b in get_all_bookings() if b["year"]==tom.year and b["month"]==tom.month and b["day"]==tom.day]
         if not tom_b: await call.message.answer("Завтра броней нет.")
