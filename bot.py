@@ -935,9 +935,13 @@ def create_admin_login_link(user_id):
 async def send_web_admin_link(chat, user_id):
     url = create_admin_login_link(user_id)
     await chat.answer(
-        "🌐 Вход в веб-админку\n\nСсылка одноразовая и действует 10 минут. Никому её не пересылай.\n\n"
-        "Внутри: брони, услуги, отзывы и галерея.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔑 Войти в админку", url=url)]]))
+        "🌐 Веб-админка: skffmassage.com/admin\n\n"
+        "Вход по паролю. Внутри брони, услуги, отзывы и галерея.\n\n"
+        "Первый вход или забыл пароль? Нажми «Первый вход / сброс пароля»: ссылка одноразовая, действует 10 минут, "
+        "по ней войдёшь без пароля и сможешь задать новый. Никому её не пересылай.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🌐 Открыть админку", url=f"{SITE_URL}/admin")],
+            [InlineKeyboardButton(text="🔑 Первый вход / сброс пароля", url=url)]]))
 
 def admin_panel_kb():
     open_label = "🔒 Вернуть расписание" if is_open_all() else "🔓 Открыть всё"

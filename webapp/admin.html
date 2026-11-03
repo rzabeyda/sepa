@@ -110,15 +110,20 @@
 
 <div id="login" class="login" hidden>
   <h1>Вход в админку</h1>
-  <p>Здесь нет пароля. Открой бота, зайди в «🔐 Админка» и нажми «🌐 Веб-админка». Бот пришлёт одноразовую ссылку для входа, она действует 10 минут.</p>
-  <a class="btn btn-primary" href="https://t.me/skffmassagebot" style="display:inline-block;text-decoration:none">Открыть бота</a>
+  <p style="margin-bottom:14px">Введи пароль, и можно менять брони, услуги, отзывы и галерею.</p>
+  <form id="login-form">
+    <div class="field"><input type="password" id="login-pw" placeholder="Пароль" autocomplete="current-password" required></div>
+    <div id="login-err" class="note" style="color:#ffb3af;min-height:22px;margin:0 0 8px"></div>
+    <button class="btn btn-primary" id="login-btn" type="submit" style="width:100%;padding:13px">Войти</button>
+  </form>
+  <p class="note" style="margin-top:20px;line-height:1.6">Первый вход или забыл пароль? Открой бота: «🔐 Админка» → «🌐 Веб-админка» → «🔑 Первый вход / сброс пароля».</p>
 </div>
 
 <div id="app" hidden>
   <header>
     <div class="head">
       <div class="brand">SKF<span>АДМИНКА</span></div>
-      <button class="btn btn-sm" id="logout">Выйти</button>
+      <div style="display:flex;gap:6px"><button class="btn btn-sm" id="pw-btn">Пароль</button><button class="btn btn-sm" id="logout">Выйти</button></div>
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="bookings">Брони</button>
@@ -196,7 +201,7 @@ async function api(method,path,body){
   return Object.assign(data,{_status:res.status});
 }
 function toast(msg,err){const t=$('#toast');t.textContent=msg;t.className='toast show'+(err?' err':'');clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='toast',err?4200:2400);}
-function showLogin(){$('#app').hidden=true;$('#login').hidden=false;}
+function showLogin(){$('#app').hidden=true;$('#login').hidden=false;setTimeout(()=>{const f=$('#login-pw');if(f)f.focus();},50);}
 function fail(e){if(e.status!==401)toast(e.message||'Ошибка',true);}
 
 // ── модальное окно ───────────────────────────────────────────────────────────
@@ -525,14 +530,51 @@ $('#gal-video').onchange=async e=>{
 };
 
 
+// ── ВХОД ПО ПАРОЛЮ и смена пароля ───────────────────────────────────────────
+let ME=null;
+$('#login-form').onsubmit=async e=>{
+  e.preventDefault();
+  const btn=$('#login-btn'); btn.disabled=true; $('#login-err').textContent='';
+  try{
+    const res=await fetch('/api/admin/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'skf-admin'},body:JSON.stringify({password:$('#login-pw').value})});
+    const d=await res.json().catch(()=>({}));
+    if(res.ok&&d.ok){$('#login-pw').value='';start();}
+    else $('#login-err').textContent=d.error||d.detail||'Не удалось войти';
+  }catch(err){$('#login-err').textContent='Нет связи с сервером';}
+  btn.disabled=false;
+};
+function passwordForm(first){
+  const needCurrent=ME&&ME.has_password&&!ME.via_link;
+  openModal(`<h3>${first?'Задай пароль для входа':'Сменить пароль'}</h3>
+    ${first?'<p class="note" style="margin-bottom:12px;line-height:1.6">Пароль нужен, чтобы в следующий раз заходить на skffmassage.com/admin без бота. Минимум 10 символов. Его не увидит никто, и я тоже.</p>':''}
+    ${needCurrent?'<div class="field"><label>Текущий пароль</label><input type="password" id="pw-cur" autocomplete="current-password"></div>':''}
+    <div class="field"><label>Новый пароль</label><input type="password" id="pw-new" autocomplete="new-password" minlength="10"></div>
+    <div class="field"><label>Повтори новый пароль</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
+    <div id="pw-err" class="note" style="color:#ffb3af;min-height:20px"></div>
+    <div class="modal-actions">${first?'<button class="btn" onclick="closeModal()">Позже</button>':'<button class="btn" onclick="closeModal()">Отмена</button>'}<button class="btn btn-primary" id="pw-save">Сохранить пароль</button></div>`);
+  setTimeout(()=>{const f=$('#pw-cur')||$('#pw-new');if(f)f.focus();},50);
+  $('#pw-save').onclick=async()=>{
+    const a=$('#pw-new').value, b=$('#pw-new2').value;
+    if(a!==b){$('#pw-err').textContent='Пароли не совпадают';return;}
+    $('#pw-save').disabled=true; $('#pw-err').textContent='';
+    try{
+      await api('POST','/api/admin/password',{password:a,current:$('#pw-cur')?$('#pw-cur').value:''});
+      ME=await api('GET','/api/admin/me'); closeModal(); toast('Пароль сохранён');
+    }catch(err){ if(err.status!==401) $('#pw-err').textContent=err.message||'Ошибка'; $('#pw-save').disabled=false; }
+  };
+}
+$('#pw-btn').onclick=()=>passwordForm(false);
+
 // ── старт ────────────────────────────────────────────────────────────────────
-(async()=>{
-  try{await api('GET','/api/admin/me');}catch(e){if(e.status===401)return;toast('Нет связи с сервером',true);return;}
+async function start(){
+  try{ME=await api('GET','/api/admin/me');}catch(e){if(e.status===401)return;toast('Нет связи с сервером',true);return;}
   $('#login').hidden=true;$('#app').hidden=false;
   const h=location.hash.slice(1);   // ссылка вида /admin#reviews открывает нужную вкладку
   const tab=LOADERS[h]?document.querySelector('.tab[data-tab="'+h+'"]'):null;
   if(tab) tab.click(); else loadBookings();
-})();
+  if(!ME.has_password) passwordForm(true);
+}
+start();
 </script>
 </body>
 </html>

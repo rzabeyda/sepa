@@ -1,14 +1,19 @@
 """Веб-админка сайта: вход по одноразовой ссылке из Telegram-бота, управление бронями и услугами.
 
+Вход: адрес /admin и пароль. Пароль каждый админ задаёт себе сам (в базе хранится только хэш scrypt).
+Первый вход и «забыл пароль» — одноразовая ссылка из бота (её может запросить только админ из ADMIN_IDS).
+
 Безопасность:
- • паролей нет: ссылку для входа может запросить в боте только админ (ADMIN_IDS);
- • ссылка одноразовая и живёт 10 минут, в базе хранится только её хэш;
- • сессия — случайный токен в cookie (HttpOnly, Secure, SameSite=Strict), в базе тоже только хэш;
+ • пароль минимум 10 символов, простые пароли отклоняются;
+ • перебор ограничен: не больше 8 неудачных попыток с одного адреса за 15 минут, плюс задержка на каждую ошибку;
+   админам в Telegram приходит сообщение о каждом входе и о подозрительных попытках;
+ • сессия — случайный токен в cookie (HttpOnly, Secure, SameSite=Strict), в базе только его хэш;
  • изменяющие запросы требуют заголовок X-Requested-With и (если он есть) Origin своего сайта;
  • картинки пересохраняются через Pillow, из текстов вырезается HTML.
 """
 import base64
 import hashlib
+import hmac
 import io
 import os
 import re
@@ -59,6 +64,8 @@ def _ensure_schema():
             CREATE TABLE IF NOT EXISTS admin_sessions (
                 token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
                 created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS admin_users (
+                user_id INTEGER PRIMARY KEY, pw_hash TEXT NOT NULL, updated_at INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS gallery (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, file TEXT NOT NULL,
@@ -75,6 +82,8 @@ def _ensure_schema():
             con.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('gallery_seeded','1')")
         # обработка видео прервалась (перезапуск сервера) — помечаем, чтобы не висело вечно
         con.execute("UPDATE gallery SET status='error' WHERE status='processing'")
+        if "via_link" not in {r[1] for r in con.execute("PRAGMA table_info(admin_sessions)")}:
+            con.execute("ALTER TABLE admin_sessions ADD COLUMN via_link INTEGER DEFAULT 0")
         cols = {r[1] for r in con.execute("PRAGMA table_info(services)")}
         if cols:
             for c in ("name_et", "name_en", "desc_et", "desc_en"):
@@ -99,11 +108,16 @@ def _hash(s):
 
 
 def _ip(request: Request):
-    return (request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-            or (request.client.host if request.client else "?"))
+    peer = request.client.host if request.client else "?"
+    if peer in ("127.0.0.1", "::1"):   # nginx на этом же сервере подставляет настоящий адрес посетителя
+        return request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip() or peer
+    return peer
 
 
-_login_hits = {}
+_login_hits = {}      # ip -> время попыток по ссылке из бота
+_fail_times = {}      # ip -> время неудачных попыток ввода пароля
+_alerted = {}         # ip -> когда последний раз предупреждали админов
+FAIL_LIMIT, FAIL_WINDOW = 8, 15 * 60
 
 
 def _rate_limited(ip, limit=10, window=600):
@@ -114,6 +128,78 @@ def _rate_limited(ip, limit=10, window=600):
         return True
     hits.append(now)
     return False
+
+
+def _recent_failures(ip):
+    now = time.time()
+    lst = [t for t in _fail_times.get(ip, []) if now - t < FAIL_WINDOW]
+    _fail_times[ip] = lst
+    return lst
+
+
+def _notify_admins(text):
+    for uid in _ctx["admin_ids"]:
+        try:
+            _ctx["notify_user"](uid, text)
+        except Exception as e:
+            print(f"[WARN] notify admin: {e}")
+
+
+# ── пароли ───────────────────────────────────────────────────────────────────
+_COMMON = {"password", "password1", "password12", "password123", "qwertyuiop", "1234567890", "12345678910",
+           "qwerty1234", "qwerty123", "admin12345", "administrator", "massage123", "massage1234", "skfmassage",
+           "sergei1234", "sergey1234", "1q2w3e4r5t", "iloveyou123", "letmein123"}
+
+
+def _weak_password(pw):
+    if len(pw) < 10:
+        return "Пароль должен быть не короче 10 символов"
+    if len(pw) > 128:
+        return "Пароль слишком длинный (до 128 символов)"
+    low = pw.lower()
+    if low in _COMMON or any(x in low for x in ("password", "qwerty", "123456", "skfmassage")):
+        return "Слишком простой пароль, придумай другой"
+    if pw.isdigit():
+        return "Пароль из одних цифр не подходит"
+    if len(set(pw)) < 5:
+        return "В пароле слишком много одинаковых символов"
+    return None
+
+
+def _hash_password(pw):
+    salt = os.urandom(16)
+    h = hashlib.scrypt(pw.encode(), salt=salt, n=2 ** 14, r=8, p=1, dklen=32, maxmem=64 * 1024 * 1024)
+    return f"scrypt${2 ** 14}$8$1${salt.hex()}${h.hex()}"
+
+
+def _verify_password(pw, stored):
+    try:
+        _, n, r, p, salt, h = stored.split("$")
+        calc = hashlib.scrypt(pw.encode(), salt=bytes.fromhex(salt), n=int(n), r=int(r), p=int(p),
+                              dklen=len(h) // 2, maxmem=64 * 1024 * 1024)
+        return hmac.compare_digest(calc.hex(), h)
+    except Exception:
+        return False
+
+
+_DUMMY_HASH = None
+
+
+def _issue_session(con, uid, via_link=False):
+    """Создаёт сессию: в базу идёт хэш токена, сам токен — только в cookie браузера."""
+    token = secrets.token_urlsafe(32)
+    now = int(time.time())
+    con.execute("DELETE FROM admin_sessions WHERE expires_at<?", (now,))
+    con.execute("INSERT INTO admin_sessions (token_hash, user_id, created_at, expires_at, via_link) VALUES (?,?,?,?,?)",
+                (_hash(token), uid, now, now + SESSION_SECONDS, 1 if via_link else 0))
+    return token
+
+
+def _set_cookie(resp, token):
+    resp.set_cookie(COOKIE, token, max_age=SESSION_SECONDS, httponly=True, secure=True, samesite="strict", path="/")
+    resp.headers["Cache-Control"] = "no-store"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    return resp
 
 
 _BAD = re.compile(r"[<>\x00-\x08\x0b\x0c\x0e-\x1f]")
@@ -152,11 +238,12 @@ def _auth(request: Request):
 _LOGIN_FAIL = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Вход</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#070707;color:#ece7df;font-family:system-ui,sans-serif;text-align:center;padding:24px">
 <div><h1 style="font-weight:600;font-size:24px">Ссылка не подходит</h1>
-<p style="color:#8f897f;line-height:1.6">Она уже использована или устарела (действует 10 минут).<br>Открой бота, зайди в «Админка» и нажми «Веб-админка», чтобы получить новую.</p></div>"""
+<p style="color:#8f897f;line-height:1.6">Она уже использована или устарела (действует 10 минут).<br>Получить новую можно в боте: «Админка» → «Веб-админка».<br><br><a href="/admin" style="color:#dcc592">Ко входу по паролю</a></p></div>"""
 
 
 @router.get("/admin/login")
-def admin_login(t: str, request: Request):
+def admin_login_link(t: str, request: Request):
+    """Одноразовая ссылка из бота: первый вход и «забыл пароль». После входа админка предложит задать пароль."""
     if _rate_limited(_ip(request)):
         return HTMLResponse(_LOGIN_FAIL, status_code=429, headers={"Cache-Control": "no-store"})
     con = _db()
@@ -167,18 +254,86 @@ def admin_login(t: str, request: Request):
     if not ok:
         con.close()
         return HTMLResponse(_LOGIN_FAIL, status_code=400, headers={"Cache-Control": "no-store"})
-    session = secrets.token_urlsafe(32)
-    now = int(time.time())
-    con.execute("DELETE FROM admin_sessions WHERE expires_at<?", (now,))
-    con.execute("DELETE FROM admin_tokens WHERE expires_at<?", (now - 3600,))
-    con.execute("INSERT INTO admin_sessions (token_hash, user_id, created_at, expires_at) VALUES (?,?,?,?)",
-                (_hash(session), row[0], now, now + SESSION_SECONDS))
+    con.execute("DELETE FROM admin_tokens WHERE expires_at<?", (int(time.time()) - 3600,))
+    token = _issue_session(con, row[0], via_link=True)
     con.commit(); con.close()
-    resp = RedirectResponse("/admin", status_code=303)
-    resp.set_cookie(COOKIE, session, max_age=SESSION_SECONDS, httponly=True, secure=True, samesite="strict", path="/")
-    resp.headers["Cache-Control"] = "no-store"
-    resp.headers["Referrer-Policy"] = "no-referrer"
-    return resp
+    return _set_cookie(RedirectResponse("/admin", status_code=303), token)
+
+
+class LoginIn(BaseModel):
+    password: str
+
+
+@router.post("/api/admin/login")
+def password_login(p: LoginIn, request: Request):
+    global _DUMMY_HASH
+    if request.headers.get("x-requested-with") != "skf-admin":
+        _err(403, "Запрос отклонён")
+    ip = _ip(request)
+    fails = _recent_failures(ip)
+    if len(fails) >= FAIL_LIMIT:
+        return JSONResponse({"ok": False, "error": "Слишком много попыток. Подожди 15 минут и попробуй снова."}, status_code=429)
+    pw = (p.password or "")[:200]
+    con = _db()
+    rows = con.execute("SELECT user_id, pw_hash FROM admin_users").fetchall()
+    uid = None
+    if not rows:   # пароли ещё не заданы: тратим то же время, чтобы не выдавать это по скорости ответа
+        _DUMMY_HASH = _DUMMY_HASH or _hash_password("dummy-password")
+        _verify_password(pw, _DUMMY_HASH)
+    for u, h in rows:   # проверяем всех, не останавливаясь на первом совпадении
+        if _verify_password(pw, h) and u in _ctx["admin_ids"]:
+            uid = u
+    if uid is None:
+        con.close()
+        fails.append(time.time())
+        time.sleep(0.7)
+        now = time.time()
+        if len(fails) >= 5 and now - _alerted.get(ip, 0) > 3600:   # не спамим: не чаще раза в час с одного адреса
+            _alerted[ip] = now
+            _notify_admins(f"⚠️ Неудачные попытки входа в веб-админку: {len(fails)} с адреса {ip}. "
+                           f"Если это не вы, ничего делать не нужно: после 8 попыток адрес блокируется на 15 минут.")
+        return JSONResponse({"ok": False, "error": "Неверный пароль"}, status_code=401)
+    _fail_times.pop(ip, None)
+    token = _issue_session(con, uid)
+    con.commit(); con.close()
+    _notify_admins_one(uid, f"🔐 Вход в веб-админку\nАдрес: {ip}\nВремя: {_ctx['now_t']().strftime('%d.%m %H:%M')}\n"
+                            f"Если это были не вы, смените пароль: в боте «Админка» → «Веб-админка».")
+    return _set_cookie(JSONResponse({"ok": True}), token)
+
+
+def _notify_admins_one(uid, text):
+    try:
+        _ctx["notify_user"](uid, text)
+    except Exception as e:
+        print(f"[WARN] notify admin: {e}")
+
+
+class PasswordIn(BaseModel):
+    password: str
+    current: str = ""
+
+
+@router.post("/api/admin/password")
+def set_password(p: PasswordIn, request: Request):
+    uid = _auth(request)
+    weak = _weak_password(p.password or "")
+    if weak:
+        _err(400, weak)
+    con = _db()
+    row = con.execute("SELECT pw_hash FROM admin_users WHERE user_id=?", (uid,)).fetchone()
+    sess = con.execute("SELECT via_link FROM admin_sessions WHERE token_hash=?", (_hash(request.cookies.get(COOKIE, "")),)).fetchone()
+    via_link = bool(sess and sess[0])
+    if row and not via_link:   # сменить пароль, зная старый; забыл — войди по ссылке из бота
+        if not _verify_password((p.current or "")[:200], row[0]):
+            con.close(); time.sleep(0.7); _err(403, "Текущий пароль неверный")
+    con.execute("INSERT OR REPLACE INTO admin_users (user_id, pw_hash, updated_at) VALUES (?,?,?)",
+                (uid, _hash_password(p.password), int(time.time())))
+    # при смене пароля все остальные сессии этого админа закрываются
+    con.execute("DELETE FROM admin_sessions WHERE user_id=? AND token_hash<>?", (uid, _hash(request.cookies.get(COOKIE, ""))))
+    con.execute("UPDATE admin_sessions SET via_link=0 WHERE token_hash=?", (_hash(request.cookies.get(COOKIE, "")),))
+    con.commit(); con.close()
+    _notify_admins_one(uid, "🔑 Пароль от веб-админки изменён. Если это были не вы, срочно напишите разработчику.")
+    return {"ok": True}
 
 
 @router.get("/admin", response_class=HTMLResponse)
@@ -192,7 +347,12 @@ def admin_page():
 
 @router.get("/api/admin/me")
 def admin_me(request: Request):
-    return {"ok": True, "user_id": _auth(request)}
+    uid = _auth(request)
+    con = _db()
+    has = bool(con.execute("SELECT 1 FROM admin_users WHERE user_id=?", (uid,)).fetchone())
+    sess = con.execute("SELECT via_link FROM admin_sessions WHERE token_hash=?", (_hash(request.cookies.get(COOKIE, "")),)).fetchone()
+    con.close()
+    return {"ok": True, "user_id": uid, "has_password": has, "via_link": bool(sess and sess[0])}
 
 
 @router.post("/api/admin/logout")

@@ -207,8 +207,10 @@
   .empty-state{text-align:center;color:var(--muted);padding:56px 20px;font-size:14px;line-height:1.8;}
 
   /* ── FOOTER ──────────────────────────────────────────── */
-  .site-footer{max-width:1160px;margin:56px auto 0;padding:30px 20px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr;gap:16px;}
-  .footer-copy{text-align:center;color:var(--muted);font-size:12px;letter-spacing:.04em;}
+  .site-footer{max-width:1160px;margin:56px auto 0;padding:30px 20px 0;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;}
+  .footer-copy{color:var(--muted);font-size:12px;letter-spacing:.04em;}
+  .footer-admin{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;padding:7px 14px;border:1px solid var(--line2);border-radius:999px;transition:color .2s,border-color .2s,background .2s;}
+  .footer-admin:hover{color:var(--gold2);border-color:var(--gold);background:var(--gold-dim);}
 
   /* ── ≥ 700px ─────────────────────────────────────────── */
   @media(min-width:700px){
@@ -472,6 +474,7 @@
 
   <footer class="site-footer">
     <div class="footer-copy">© SKF-MASSAGE OÜ</div>
+    <a class="footer-admin" href="/admin" rel="nofollow">Admin</a>
   </footer>
 </div>
 
