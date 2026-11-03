@@ -16,12 +16,15 @@
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   html,body{background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,sans-serif;font-size:15px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased;}
   button,input,select,textarea{font:inherit;color:inherit;}
+  a{color:inherit;}
   :focus-visible{outline:2px solid var(--gold2);outline-offset:2px;border-radius:6px;}
   .wrap{max-width:900px;margin:0 auto;padding:0 16px 80px;}
   header{position:sticky;top:0;z-index:20;background:rgba(7,7,7,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);}
   .head{max-width:900px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
   .brand{font-weight:800;letter-spacing:.12em;font-size:17px;}
   .brand span{font-weight:600;font-size:11px;letter-spacing:.28em;color:var(--gold2);margin-left:8px;}
+  .brand{color:inherit;text-decoration:none;}
+  @media(max-width:430px){.brand span{display:none;}}
   .tabs{max-width:900px;margin:0 auto;padding:0 16px;display:flex;gap:6px;}
   .tab{flex:1;padding:12px 8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-weight:600;cursor:pointer;letter-spacing:.04em;}
   .tab.active{color:var(--gold2);border-bottom-color:var(--gold);}
@@ -102,6 +105,11 @@
   .gal-item .badge{position:absolute;top:6px;left:6px;margin:0;background:rgba(0,0,0,.7);}
   .progress{height:8px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin:10px 0 4px;}
   .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .2s;}
+  .pwwrap{position:relative;}
+  .pwwrap input{padding-right:46px;}
+  .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;}
+  .eye:hover,.eye.on{color:var(--gold2);}
+  .linkbtn{background:none;border:none;color:var(--gold2);cursor:pointer;font-size:13.5px;text-decoration:underline;padding:4px;}
   [hidden]{display:none!important;}
   @media(max-width:520px){.bk{gap:10px;}.bk-time{min-width:58px;}.svc img{width:78px;height:78px;}}
 </style>
@@ -111,19 +119,21 @@
 <div id="login" class="login" hidden>
   <h1>Вход в админку</h1>
   <p style="margin-bottom:14px">Введи пароль, и можно менять брони, услуги, отзывы и галерею.</p>
-  <form id="login-form">
-    <div class="field"><input type="password" id="login-pw" placeholder="Пароль" autocomplete="current-password" required></div>
+  <form id="login-form" autocomplete="on">
+    <input type="text" id="login-user" name="username" value="SKF Admin" autocomplete="username" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;opacity:0;height:1px;width:1px">
+    <div class="field pwwrap"><input type="password" id="login-pw" name="password" placeholder="Пароль" autocomplete="current-password" required><button type="button" class="eye" aria-label="Показать пароль"></button></div>
     <div id="login-err" class="note" style="color:#ffb3af;min-height:22px;margin:0 0 8px"></div>
     <button class="btn btn-primary" id="login-btn" type="submit" style="width:100%;padding:13px">Войти</button>
   </form>
-  <p class="note" style="margin-top:20px;line-height:1.6">Первый вход или забыл пароль? Открой бота: «🔐 Админка» → «🌐 Веб-админка» → «🔑 Первый вход / сброс пароля».</p>
+  <p style="margin-top:14px"><button type="button" class="linkbtn" id="forgot-link">Забыл пароль?</button></p>
+  <p class="note" style="margin-top:14px;line-height:1.6">Пароль нужно ввести один раз: этот телефон или компьютер запомнится.<br><br>Первый вход или забыл пароль? Открой бота: «🔐 Админка» → «🌐 Веб-админка» → «🔑 Первый вход / сброс пароля».</p>
 </div>
 
 <div id="app" hidden>
   <header>
     <div class="head">
-      <div class="brand">SKF<span>АДМИНКА</span></div>
-      <div style="display:flex;gap:6px"><button class="btn btn-sm" id="pw-btn">Пароль</button><button class="btn btn-sm" id="logout">Выйти</button></div>
+      <a class="brand" href="/" aria-label="На сайт">SKF<span>АДМИНКА</span></a>
+      <div style="display:flex;gap:6px"><a class="btn btn-sm" href="/" style="text-decoration:none">Сайт</a><button class="btn btn-sm" id="pw-btn">Пароль</button><button class="btn btn-sm" id="logout">Выйти</button></div>
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="bookings">Брони</button>
@@ -538,31 +548,66 @@ $('#login-form').onsubmit=async e=>{
   try{
     const res=await fetch('/api/admin/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'skf-admin'},body:JSON.stringify({password:$('#login-pw').value})});
     const d=await res.json().catch(()=>({}));
-    if(res.ok&&d.ok){$('#login-pw').value='';start();}
+    if(res.ok&&d.ok){
+      // просим браузер запомнить пароль (Chrome/Android); в других браузерах сработает обычное автозаполнение
+      try{ if(window.PasswordCredential&&navigator.credentials) await navigator.credentials.store(new PasswordCredential({id:'SKF Admin',password:$('#login-pw').value,name:'SKF Admin'})); }catch(e){}
+      $('#login-pw').value='';start();
+    }
     else $('#login-err').textContent=d.error||d.detail||'Не удалось войти';
   }catch(err){$('#login-err').textContent='Нет связи с сервером';}
   btn.disabled=false;
 };
+const EYE='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+function bindEyes(root){
+  (root||document).querySelectorAll('.pwwrap').forEach(w=>{
+    const inp=w.querySelector('input'), b=w.querySelector('.eye'); if(!b||b.dataset.bound)return; b.dataset.bound=1; b.innerHTML=EYE;
+    b.onclick=()=>{const show=inp.type==='password'; inp.type=show?'text':'password'; b.classList.toggle('on',show); b.setAttribute('aria-label',show?'Скрыть пароль':'Показать пароль');};
+  });
+}
+bindEyes();
+const pwField=(id,label,ac)=>`<div class="field"><label>${label}</label><div class="pwwrap"><input type="password" id="${id}" autocomplete="${ac}"><button type="button" class="eye" aria-label="Показать пароль"></button></div></div>`;
 function passwordForm(first){
   const needCurrent=ME&&ME.has_password&&!ME.via_link;
-  openModal(`<h3>${first?'Задай пароль для входа':'Сменить пароль'}</h3>
-    ${first?'<p class="note" style="margin-bottom:12px;line-height:1.6">Пароль нужен, чтобы в следующий раз заходить на skffmassage.com/admin без бота. Минимум 10 символов. Его не увидит никто, и я тоже.</p>':''}
-    ${needCurrent?'<div class="field"><label>Текущий пароль</label><input type="password" id="pw-cur" autocomplete="current-password"></div>':''}
-    <div class="field"><label>Новый пароль</label><input type="password" id="pw-new" autocomplete="new-password" minlength="10"></div>
-    <div class="field"><label>Повтори новый пароль</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
+  const hadPw=ME&&ME.has_password;
+  openModal(`<h3>${first?'Задай пароль для входа':'Пароль и почта'}</h3>
+    ${first?'<p class="note" style="margin-bottom:12px;line-height:1.6">Пароль нужен, чтобы в следующий раз заходить на skffmassage.com/admin без бота. Минимум 10 символов. Этот телефон или компьютер запомнится, вводить пароль каждый раз не придётся.</p>':''}
+    ${needCurrent?pwField('pw-cur','Текущий пароль (нужен, только если меняешь пароль)','current-password'):''}
+    ${pwField('pw-new',hadPw?'Новый пароль (оставь пустым, если не меняешь)':'Новый пароль','new-password')}
+    ${pwField('pw-new2','Повтори новый пароль','new-password')}
+    <div class="field"><label>Почта для восстановления (по желанию)</label><input type="email" id="pw-email" value="${esc(ME&&ME.email||'')}" autocomplete="email" placeholder="name@gmail.com">
+      <div class="note">Если забудешь пароль, на эту почту придёт ссылка для входа.${ME&&ME.email_enabled===false?' Отправка писем на сервере пока не настроена, пока работает вход через бота.':''}</div></div>
     <div id="pw-err" class="note" style="color:#ffb3af;min-height:20px"></div>
-    <div class="modal-actions">${first?'<button class="btn" onclick="closeModal()">Позже</button>':'<button class="btn" onclick="closeModal()">Отмена</button>'}<button class="btn btn-primary" id="pw-save">Сохранить пароль</button></div>`);
+    <div class="modal-actions">${first?'<button class="btn" onclick="closeModal()">Позже</button>':'<button class="btn" onclick="closeModal()">Отмена</button>'}<button class="btn btn-primary" id="pw-save">Сохранить</button></div>`);
+  bindEyes($('#modal-box'));
   setTimeout(()=>{const f=$('#pw-cur')||$('#pw-new');if(f)f.focus();},50);
   $('#pw-save').onclick=async()=>{
-    const a=$('#pw-new').value, b=$('#pw-new2').value;
+    const a=$('#pw-new').value, b=$('#pw-new2').value, mail=$('#pw-email').value.trim();
     if(a!==b){$('#pw-err').textContent='Пароли не совпадают';return;}
+    if(!a&&!hadPw){$('#pw-err').textContent='Придумай пароль';return;}
     $('#pw-save').disabled=true; $('#pw-err').textContent='';
     try{
-      await api('POST','/api/admin/password',{password:a,current:$('#pw-cur')?$('#pw-cur').value:''});
-      ME=await api('GET','/api/admin/me'); closeModal(); toast('Пароль сохранён');
+      if(a) await api('POST','/api/admin/password',{password:a,current:$('#pw-cur')?$('#pw-cur').value:''});
+      if(mail!==(ME.email||'')) await api('POST','/api/admin/email',{email:mail});
+      ME=await api('GET','/api/admin/me'); closeModal(); toast('Сохранено');
     }catch(err){ if(err.status!==401) $('#pw-err').textContent=err.message||'Ошибка'; $('#pw-save').disabled=false; }
   };
 }
+$('#forgot-link').onclick=()=>{
+  openModal(`<h3>Забыл пароль</h3>
+    <p class="note" style="margin-bottom:12px;line-height:1.6">Введи почту, которую привязал в админке. Мы пришлём ссылку для входа, по ней можно задать новый пароль. Если почту не привязывал, возьми ссылку в боте: «Админка» → «Веб-админка».</p>
+    <div class="field"><label>Почта</label><input type="email" id="fg-email" autocomplete="email" placeholder="name@gmail.com"></div>
+    <div id="fg-msg" class="note" style="min-height:20px"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">Закрыть</button><button class="btn btn-primary" id="fg-go">Отправить ссылку</button></div>`);
+  $('#fg-go').onclick=async()=>{
+    $('#fg-go').disabled=true; $('#fg-msg').style.color=''; $('#fg-msg').textContent='';
+    try{
+      const res=await fetch('/api/admin/forgot',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'skf-admin'},body:JSON.stringify({email:$('#fg-email').value})});
+      const d=await res.json().catch(()=>({}));
+      $('#fg-msg').style.color=res.ok?'var(--green)':'#ffb3af'; $('#fg-msg').textContent=d.message||d.error||d.detail||'Ошибка';
+    }catch(e){$('#fg-msg').style.color='#ffb3af';$('#fg-msg').textContent='Нет связи с сервером';}
+    $('#fg-go').disabled=false;
+  };
+};
 $('#pw-btn').onclick=()=>passwordForm(false);
 
 // ── старт ────────────────────────────────────────────────────────────────────

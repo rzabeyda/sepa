@@ -1,13 +1,16 @@
 """Веб-админка сайта: вход по одноразовой ссылке из Telegram-бота, управление бронями и услугами.
 
 Вход: адрес /admin и пароль. Пароль каждый админ задаёт себе сам (в базе хранится только хэш scrypt).
-Первый вход и «забыл пароль» — одноразовая ссылка из бота (её может запросить только админ из ADMIN_IDS).
+Первый вход и «забыл пароль» — одноразовая ссылка из бота (её может запросить только админ из ADMIN_IDS)
+или письмо со ссылкой на почту, которую админ сам привязал (нужны SMTP_USER и SMTP_PASSWORD в .env).
 
 Безопасность:
  • пароль минимум 10 символов, простые пароли отклоняются;
  • перебор ограничен: не больше 8 неудачных попыток с одного адреса за 15 минут, плюс задержка на каждую ошибку;
-   админам в Telegram приходит сообщение о каждом входе и о подозрительных попытках;
+   админам в Telegram приходит предупреждение только при подозрительном подборе пароля;
  • сессия — случайный токен в cookie (HttpOnly, Secure, SameSite=Strict), в базе только его хэш;
+   она живёт год и продлевается при каждом заходе, так что пароль вводят один раз на устройство;
+   смена пароля закрывает все остальные устройства;
  • изменяющие запросы требуют заголовок X-Requested-With и (если он есть) Origin своего сайта;
  • картинки пересохраняются через Pillow, из текстов вырезается HTML.
 """
@@ -19,11 +22,13 @@ import os
 import re
 import secrets
 import shutil
+import smtplib
 import sqlite3
 import subprocess
 import threading
 import time
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -35,7 +40,7 @@ router = APIRouter()
 _ctx = {}
 
 COOKIE = "skf_admin"
-SESSION_SECONDS = 14 * 24 * 3600     # сессия живёт 14 дней
+SESSION_SECONDS = 365 * 24 * 3600    # вход запоминается на год и продлевается при каждом заходе в админку
 TOKEN_SECONDS = 10 * 60              # ссылка для входа — 10 минут
 REST_MINUTES = 30                    # отдых после сеанса (как в боте и на сайте)
 DURATIONS = (60, 90)
@@ -82,6 +87,8 @@ def _ensure_schema():
             con.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('gallery_seeded','1')")
         # обработка видео прервалась (перезапуск сервера) — помечаем, чтобы не висело вечно
         con.execute("UPDATE gallery SET status='error' WHERE status='processing'")
+        if "email" not in {r[1] for r in con.execute("PRAGMA table_info(admin_users)")}:
+            con.execute("ALTER TABLE admin_users ADD COLUMN email TEXT DEFAULT ''")
         if "via_link" not in {r[1] for r in con.execute("PRAGMA table_info(admin_sessions)")}:
             con.execute("ALTER TABLE admin_sessions ADD COLUMN via_link INTEGER DEFAULT 0")
         cols = {r[1] for r in con.execute("PRAGMA table_info(services)")}
@@ -296,16 +303,7 @@ def password_login(p: LoginIn, request: Request):
     _fail_times.pop(ip, None)
     token = _issue_session(con, uid)
     con.commit(); con.close()
-    _notify_admins_one(uid, f"🔐 Вход в веб-админку\nАдрес: {ip}\nВремя: {_ctx['now_t']().strftime('%d.%m %H:%M')}\n"
-                            f"Если это были не вы, смените пароль: в боте «Админка» → «Веб-админка».")
     return _set_cookie(JSONResponse({"ok": True}), token)
-
-
-def _notify_admins_one(uid, text):
-    try:
-        _ctx["notify_user"](uid, text)
-    except Exception as e:
-        print(f"[WARN] notify admin: {e}")
 
 
 class PasswordIn(BaseModel):
@@ -332,8 +330,99 @@ def set_password(p: PasswordIn, request: Request):
     con.execute("DELETE FROM admin_sessions WHERE user_id=? AND token_hash<>?", (uid, _hash(request.cookies.get(COOKIE, ""))))
     con.execute("UPDATE admin_sessions SET via_link=0 WHERE token_hash=?", (_hash(request.cookies.get(COOKIE, "")),))
     con.commit(); con.close()
-    _notify_admins_one(uid, "🔑 Пароль от веб-админки изменён. Если это были не вы, срочно напишите разработчику.")
     return {"ok": True}
+
+
+# ── почта: привязка и восстановление доступа ─────────────────────────────────
+def _smtp_config():
+    user, pw = os.getenv("SMTP_USER", ""), os.getenv("SMTP_PASSWORD", "")
+    if not (user and pw):
+        return None
+    return (os.getenv("SMTP_HOST", "smtp.gmail.com"), int(os.getenv("SMTP_PORT", "465")), user, pw, os.getenv("SMTP_FROM", user))
+
+
+def _send_email(to, subject, body):
+    cfg = _smtp_config()
+    if not cfg:
+        raise RuntimeError("SMTP не настроен")
+    host, port, user, pw, sender = cfg
+    msg = EmailMessage()
+    msg["From"], msg["To"], msg["Subject"] = sender, to, subject
+    msg.set_content(body)
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, timeout=15) as s:
+            s.login(user, pw); s.send_message(msg)
+    else:
+        with smtplib.SMTP(host, port, timeout=15) as s:
+            s.starttls(); s.login(user, pw); s.send_message(msg)
+
+
+def _send_email_safe(to, subject, body):
+    try:
+        _send_email(to, subject, body)
+    except Exception as e:
+        print(f"[WARN] email: {e}")
+
+
+_EMAIL_RE = re.compile(r"[^@\s]{1,64}@[^@\s]{1,200}\.[^@\s]{2,}")
+_forgot_ip = {}
+_forgot_mail = {}
+
+
+class EmailIn(BaseModel):
+    email: str
+
+
+@router.post("/api/admin/email")
+def set_email(p: EmailIn, request: Request):
+    """Почта для восстановления доступа. Пустое значение отвязывает почту."""
+    uid = _auth(request)
+    email = clean(p.email, 120).lower()
+    if email and not _EMAIL_RE.fullmatch(email):
+        _err(400, "Похоже, в почте опечатка")
+    con = _db()
+    if not con.execute("SELECT 1 FROM admin_users WHERE user_id=?", (uid,)).fetchone():
+        con.close(); _err(400, "Сначала задай пароль")
+    if email and con.execute("SELECT 1 FROM admin_users WHERE LOWER(email)=? AND user_id<>?", (email, uid)).fetchone():
+        con.close(); _err(409, "Эта почта уже привязана к другому админу")
+    con.execute("UPDATE admin_users SET email=? WHERE user_id=?", (email, uid))
+    con.commit(); con.close()
+    return {"ok": True}
+
+
+@router.post("/api/admin/forgot")
+def forgot_password(p: EmailIn, request: Request):
+    """Письмо со ссылкой для входа. Отвечаем одинаково, есть такая почта в системе или нет."""
+    if request.headers.get("x-requested-with") != "skf-admin":
+        _err(403, "Запрос отклонён")
+    ip = _ip(request)
+    now = time.time()
+    hits = [t for t in _forgot_ip.get(ip, []) if now - t < 3600]
+    _forgot_ip[ip] = hits
+    if len(hits) >= 5:
+        return JSONResponse({"ok": False, "error": "Слишком много запросов. Попробуй через час."}, status_code=429)
+    hits.append(now)
+    if not _smtp_config():
+        return JSONResponse({"ok": False, "error": "Восстановление по почте пока не настроено. Используй бота: «Админка» → «Веб-админка»."}, status_code=503)
+    email = clean(p.email, 120).lower()
+    sent = [t for t in _forgot_mail.get(email, []) if now - t < 3600]
+    _forgot_mail[email] = sent
+    con = _db()
+    row = con.execute("SELECT user_id FROM admin_users WHERE LOWER(email)=? AND email<>''", (email,)).fetchone() if email else None
+    if row and row[0] in _ctx["admin_ids"] and len(sent) < 3:
+        sent.append(now)
+        token = secrets.token_urlsafe(24)
+        con.execute("INSERT INTO admin_tokens (token_hash,user_id,expires_at,used) VALUES (?,?,?,0)",
+                    (_hash(token), row[0], int(now) + TOKEN_SECONDS))
+        con.commit()
+        link = f"{_ctx['site_url']}/admin/login?t={token}"
+        threading.Thread(target=_send_email_safe, daemon=True, args=(
+            email, "Вход в админку SKF Massage",
+            "Здравствуйте!\n\nСсылка для входа в админку SKF Massage (одноразовая, действует 10 минут):\n\n"
+            f"{link}\n\nПо ней вы войдёте без пароля и сможете задать новый.\n"
+            "Если вы не запрашивали вход, просто проигнорируйте это письмо.")).start()
+    con.close()
+    return {"ok": True, "message": "Если эта почта привязана к админке, мы отправили на неё ссылку для входа. Она действует 10 минут."}
 
 
 @router.get("/admin", response_class=HTMLResponse)
@@ -348,11 +437,16 @@ def admin_page():
 @router.get("/api/admin/me")
 def admin_me(request: Request):
     uid = _auth(request)
+    token = request.cookies.get(COOKIE, "")
     con = _db()
-    has = bool(con.execute("SELECT 1 FROM admin_users WHERE user_id=?", (uid,)).fetchone())
-    sess = con.execute("SELECT via_link FROM admin_sessions WHERE token_hash=?", (_hash(request.cookies.get(COOKIE, "")),)).fetchone()
-    con.close()
-    return {"ok": True, "user_id": uid, "has_password": has, "via_link": bool(sess and sess[0])}
+    urow = con.execute("SELECT email FROM admin_users WHERE user_id=?", (uid,)).fetchone()
+    has = bool(urow)
+    sess = con.execute("SELECT via_link FROM admin_sessions WHERE token_hash=?", (_hash(token),)).fetchone()
+    # скользящая сессия: каждый заход продлевает вход ещё на год (и в базе, и в cookie)
+    con.execute("UPDATE admin_sessions SET expires_at=? WHERE token_hash=?", (int(time.time()) + SESSION_SECONDS, _hash(token)))
+    con.commit(); con.close()
+    return _set_cookie(JSONResponse({"ok": True, "user_id": uid, "has_password": has, "via_link": bool(sess and sess[0]),
+                                       "email": (urow[0] if urow and urow[0] else ""), "email_enabled": bool(_smtp_config())}), token)
 
 
 @router.post("/api/admin/logout")
