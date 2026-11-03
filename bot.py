@@ -152,6 +152,15 @@ def migrate_db():
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         )""",
+        """CREATE TABLE IF NOT EXISTS admin_tokens (
+            token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL, used INTEGER DEFAULT 0
+        )""",
+        """CREATE TABLE IF NOT EXISTS gallery (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, file TEXT NOT NULL,
+            status TEXT DEFAULT 'ready', sort_order INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT '', tg_file_id TEXT DEFAULT ''
+        )""",
         """CREATE TABLE IF NOT EXISTS bot_users (
             user_id INTEGER PRIMARY KEY,
             username TEXT DEFAULT '',
@@ -247,6 +256,7 @@ def get_referral_count(user_id):
 
 # ── Vouchers ──────────────────────────────────────────────────────────────────
 import random, string
+import secrets, hashlib, time
 
 def generate_voucher_code():
     return "SERGEY-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -787,6 +797,13 @@ def bottom_kb(is_admin=False, user_id=None, webapp_url=""):
     if is_admin: buttons.append([KeyboardButton(text="🔐 Админка")])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
+def md_esc(text):
+    """Экранирует символы, ломающие Markdown в Telegram (названия и описания теперь вводятся в админке)."""
+    out = text or ""
+    for ch in ("_", "*", "`", "["):
+        out = out.replace(ch, "\\" + ch)
+    return out
+
 def short_svc(name):
     """Для надписей на кнопках: «Классический массаж» → «Классический м-ж» (иначе не влезает). В базе и в callback_data имя остаётся полным."""
     name = name or ""
@@ -903,6 +920,25 @@ def services_edit_kb(bid):
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data=f"edit_booking:{bid}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
+SITE_URL = os.getenv("SITE_URL", "https://skffmassage.com").rstrip("/")
+
+def create_admin_login_link(user_id):
+    """Одноразовая ссылка для входа в веб-админку: живёт 10 минут, в базе хранится только хэш."""
+    token = secrets.token_urlsafe(24)
+    con = db_connect()
+    con.execute("DELETE FROM admin_tokens WHERE expires_at<?", (int(time.time()) - 3600,))
+    con.execute("INSERT INTO admin_tokens (token_hash,user_id,expires_at,used) VALUES (?,?,?,0)",
+                (hashlib.sha256(token.encode()).hexdigest(), user_id, int(time.time()) + 600))
+    con.commit(); con.close()
+    return f"{SITE_URL}/admin/login?t={token}"
+
+async def send_web_admin_link(chat, user_id):
+    url = create_admin_login_link(user_id)
+    await chat.answer(
+        "🌐 Вход в веб-админку\n\nСсылка одноразовая и действует 10 минут. Никому её не пересылай.\n\n"
+        "Внутри: брони, услуги, отзывы и галерея.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔑 Войти в админку", url=url)]]))
+
 def admin_panel_kb():
     open_label = "🔒 Вернуть расписание" if is_open_all() else "🔓 Открыть всё"
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -916,7 +952,8 @@ def admin_panel_kb():
          InlineKeyboardButton(text="📣 Рассылка",       callback_data="admin_broadcast")],
         [InlineKeyboardButton(text="🎁 Бонусы",         callback_data="admin_vouchers"),
          InlineKeyboardButton(text="🚫 Бан",            callback_data="admin_ban_menu")],
-        [InlineKeyboardButton(text=open_label,          callback_data="admin_open_all")]])
+        [InlineKeyboardButton(text=open_label,          callback_data="admin_open_all"),
+         InlineKeyboardButton(text="🌐 Веб-админка",     callback_data="admin_web")]])
 
 ADMIN_PAGE_SIZE = 10
 
@@ -1254,22 +1291,39 @@ async def wr_text(message: types.Message, state: FSMContext):
     await _save_write_review(message, state, text)
     await message.answer("🙏 Спасибо за отзыв!")
 
-GALLERY_VIDEOS = ["massage01.mp4"]   # добавляйте сюда новые файлы из папки videos/
-_gallery_file_ids = {}
+def get_gallery_items():
+    con = db_connect()
+    try:
+        rows = con.execute("SELECT id,kind,file,tg_file_id FROM gallery WHERE status='ready' ORDER BY sort_order, id").fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    con.close()
+    return [{"id": r[0], "kind": r[1], "file": r[2], "tg": r[3] or ""} for r in rows]
 
 # "👱‍♀️ Коллеги" оставлен в наборе — у тех, у кого ещё старая клавиатура, кнопка тоже покажет галерею
 @dp.message(F.text.in_({"🖼 Галерея", "👱‍♀️ Коллеги"}))
 async def btn_gallery(message: types.Message):
-    # Видео лежат в videos/ (те же файлы, что и на сайте). file_id кэшируем: после первой отправки Telegram берёт видео у себя.
-    sent = 0
-    for name in GALLERY_VIDEOS:
-        path = os.path.join(BASE_DIR, "videos", name)
-        if name not in _gallery_file_ids and not os.path.isfile(path):
-            continue
-        media = _gallery_file_ids.get(name) or FSInputFile(path)
-        msg = await message.answer_video(media, supports_streaming=True)
-        if name not in _gallery_file_ids and msg.video:
-            _gallery_file_ids[name] = msg.video.file_id
+    # Фото и видео управляются в веб-админке. Видео: после первой отправки Telegram запоминает file_id, дальше берёт файл у себя.
+    items = get_gallery_items(); sent = 0
+    photos = []
+    for it in items:
+        if it["kind"] == "photo":
+            path = os.path.join(BASE_DIR, "images", it["file"])
+            if os.path.isfile(path): photos.append(path)
+    for k in range(0, len(photos), 10):
+        chunk = photos[k:k + 10]
+        if len(chunk) == 1:
+            await message.answer_photo(FSInputFile(chunk[0]))
+        else:
+            await message.answer_media_group([types.InputMediaPhoto(media=FSInputFile(x)) for x in chunk])
+        sent += len(chunk)
+    for it in items:
+        if it["kind"] != "video": continue
+        path = os.path.join(BASE_DIR, "videos", it["file"])
+        if not it["tg"] and not os.path.isfile(path): continue
+        msg = await message.answer_video(it["tg"] or FSInputFile(path), supports_streaming=True)
+        if not it["tg"] and msg.video:
+            con = db_connect(); con.execute("UPDATE gallery SET tg_file_id=? WHERE id=?", (msg.video.file_id, it["id"])); con.commit(); con.close()
         sent += 1
     if not sent:
         await message.answer("🖼 *Галерея*\n\nФото скоро появятся 💆", parse_mode="Markdown")
@@ -1367,6 +1421,12 @@ async def btn_chat(message: types.Message):
         "📞 +372 53 730 882\n"
         "✈️ Telegram: @SKF_Massage",
         reply_markup=kb)
+
+@dp.message(Command("web"))
+async def cmd_web(message: types.Message):
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("⛔️ Нет доступа."); return
+    await send_web_admin_link(message, message.from_user.id)
 
 @dp.message(F.text == "🔐 Админка")
 async def btn_admin_panel(message: types.Message):
@@ -1506,14 +1566,14 @@ async def service_choice(call: types.CallbackQuery, state: FSMContext):
     year=now_tallinn().year; await state.update_data(service=service_name,year=year)
     photo=FSInputFile(os.path.join(BASE_DIR, svc["img"]))
     dur_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⏱ 60м — 35€", callback_data="dur:60:35€")],
+        [InlineKeyboardButton(text=f"⏱ 60м — {svc['price']}", callback_data=f"dur:60:{svc['price']}")],
         [InlineKeyboardButton(text="⏱ 90м — 50€", callback_data="dur:90:50€")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
     ])
-    desc = (svc.get("description") or "").strip()
+    desc = md_esc((svc.get("description") or "").strip())
     desc_block = f"\n\n{desc}" if desc else ""
     await call.message.answer_photo(photo=photo,
-        caption=f"✅ Вы выбрали: *{service_name}*{desc_block}\n\nВыберите длительность:",
+        caption=f"✅ Вы выбрали: *{md_esc(service_name)}*{desc_block}\n\nВыберите длительность:",
         parse_mode="Markdown", reply_markup=dur_kb)
     await state.set_state(Booking.duration); await call.answer()
 
@@ -1719,6 +1779,8 @@ async def admin_actions(call: types.CallbackQuery, state: FSMContext):
             rows=[[InlineKeyboardButton(text=f"👁 {b['time']} — {b['name']} | {b['service'][:20]}", callback_data=f"admin_view:{b['id']}")] for b in today_b]
             rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")])
             await call.message.answer(f"📅 Сегодня ({now.day} {MONTHS[now.month]}):", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    elif action=="admin_web":
+        await send_web_admin_link(call.message, call.from_user.id)
     elif action=="admin_open_all":
         now_on = not is_open_all()
         set_setting("open_all", "1" if now_on else "0")

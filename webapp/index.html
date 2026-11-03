@@ -484,13 +484,13 @@
   <div class="step" id="step1">
     <p class="step-title" data-t="duration">Kestus</p>
     <div class="dur-row">
-      <button class="dur-btn selected" id="dur60" onclick="selectDur(60,35)">
+      <button class="dur-btn selected" id="dur60" onclick="selectDur(60)">
         <div style="font-family:var(--serif);font-size:34px;line-height:1;margin-bottom:8px;font-weight:500;color:#fff">60 <span data-t="min" style="font-family:'Manrope',sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">min</span></div>
-        <div style="color:var(--gold2);font-weight:700;font-size:15px">35€</div>
+        <div id="price60" style="color:var(--gold2);font-weight:700;font-size:15px">35€</div>
       </button>
-      <button class="dur-btn" id="dur90" onclick="selectDur(90,50)">
+      <button class="dur-btn" id="dur90" onclick="selectDur(90)">
         <div style="font-family:var(--serif);font-size:34px;line-height:1;margin-bottom:8px;font-weight:500;color:#fff">90 <span data-t="min" style="font-family:'Manrope',sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">min</span></div>
-        <div style="color:var(--gold2);font-weight:700;font-size:15px">50€</div>
+        <div id="price90" style="color:var(--gold2);font-weight:700;font-size:15px">50€</div>
       </button>
     </div>
     <button class="btn btn-primary" onclick="goStep(2)" data-t="choose_date">Vali kuupäev →</button>
@@ -700,7 +700,13 @@ const SERVICE_NAMES={
   'Сегментарный массаж':{et:'Segmentaarne massaaž',en:'Segmental massage'},
   'Лечебный массаж':{et:'Ravimassaaž',en:'Therapeutic massage'}
 };
-function svcName(rawName){return lang==='ru'?rawName:(SERVICE_NAMES[rawName]?.[lang]||rawName);}
+let SVC_TR={};   // услуги из базы по русскому названию: цена, описание, переводы (редактируются в админке)
+const PRICE_90=50;
+function svcName(rawName){
+  if(lang==='ru') return rawName;
+  const o=SVC_TR[rawName];
+  return (o&&o['name_'+lang])||SERVICE_NAMES[rawName]?.[lang]||rawName;
+}
 
 const SERVICE_DESC={
   'Классический массаж':{
@@ -733,13 +739,18 @@ const SERVICE_DESC={
     en:'Therapeutic massage supports recovery after injuries and chronic strain under professional guidance.'}
 };
 const DUR_LINE={ru:'60 мин / 90 мин',et:'60 min / 90 min',en:'60 min / 90 min'};
-const PRICE_LINE={ru:'35€ / 50€',et:'35€ / 50€',en:'35€ / 50€'};
 function svcDurLine(){return DUR_LINE[lang]||DUR_LINE.ru;}
-function svcPriceLine(){return PRICE_LINE[lang]||PRICE_LINE.ru;}
-function svcDescBase(rawName){const d=SERVICE_DESC[rawName]; return d?(d[lang]||d.ru||''):'';}
+function svcPriceLine(rawName){const o=SVC_TR[rawName];return `${(o&&o.price)||'35€'} / ${PRICE_90}€`;}
+function svcDescBase(rawName){
+  const o=SVC_TR[rawName];
+  const own=o?(lang==='ru'?o.description:o['desc_'+lang]):'';
+  if(own) return own;
+  const d=SERVICE_DESC[rawName]; if(d) return d[lang]||d.ru||'';
+  return (o&&o.description)||'';
+}
 function svcDesc(rawName){
   const base=svcDescBase(rawName); if(!base) return'';
-  return `${base}\n\n${svcDurLine()} · ${svcPriceLine()}`;
+  return `${base}\n\n${svcDurLine()} · ${svcPriceLine(rawName)}`;
 }
 function openDescModal(i){
   const s=services[i]; if(!s) return;
@@ -775,6 +786,7 @@ function showPage(name,btn){
   document.getElementById('page-'+name).classList.add('active');
   if(btn) btn.classList.add('active');
   if(name==='reviews') loadReviews();
+  if(name==='gallery') loadGallery();
   if(name==='mybookings') loadMyBookings();
   haptic('light');
 }
@@ -793,12 +805,8 @@ function haptic(type){
 let services=[];
 async function loadServices(){
   try{
-    const res=await fetch(API+'/api/services'); const raw=await res.json();
-    // Фильтрация исключенных массажей
-    services=raw.filter(s => {
-      const name = s.name.toLowerCase();
-      return !name.includes('сегментарный') && !name.includes('лечебный') && !name.includes('segmentaarne') && !name.includes('ravi');
-    });
+    const res=await fetch(API+'/api/services'); services=await res.json();
+    SVC_TR={}; services.forEach(s=>{SVC_TR[s.name]=s;});
     renderServicesHTML();
   }catch(e){document.getElementById('home-services').innerHTML=`<div class="empty-state">${t('no_connection')}</div>`;}
 }
@@ -810,29 +818,31 @@ function renderServicesHTML(){
   document.getElementById('home-services').innerHTML=services.map((s,i)=>`
     <div class="service-card" onclick="bookService(${i})">
       <img src="/images/${s.img.replace('images/','')}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
-      <div class="info"><div class="name">${svcName(s.name)}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine()}</div></div>
-      ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${svcDescBase(s.name)}</div></div>`:''}
+      <div class="info"><div class="name">${escHtml(svcName(s.name))}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine(s.name)}</div></div>
+      ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${escHtml(svcDescBase(s.name))}</div></div>`:''}
       ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})" aria-label="Info">${INFO_SVG}</button>`:''}
     </div>`).join('');
   document.getElementById('book-services').innerHTML=services.map((s,i)=>`
     <div class="service-card" id="svc-${i}" onclick="selectService(${i})">
       <img src="/images/${s.img.replace('images/','')}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
-      <div class="info"><div class="name">${svcName(s.name)}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine()}</div></div>
-      ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${svcDescBase(s.name)}</div></div>`:''}
+      <div class="info"><div class="name">${escHtml(svcName(s.name))}</div><div class="dur-line">${svcDurLine()}</div><div class="price-line">${svcPriceLine(s.name)}</div></div>
+      ${svcDescBase(s.name)?`<div class="svc-desc-inline"><div class="svc-desc-text">${escHtml(svcDescBase(s.name))}</div></div>`:''}
       ${svcDescBase(s.name)?`<button class="svc-info-btn" onclick="event.stopPropagation();openDescModal(${i})" aria-label="Info">${INFO_SVG}</button>`:''}
     </div>`).join('');
 }
 
 function bookService(i){goBook();setTimeout(()=>selectService(i),150);}
-let selService=null,selDurMin=60,selPrice=35;
+let selService=null,selDurMin=60,selPrice=35,price60=35;
 function selectService(i){
   document.querySelectorAll('#book-services .service-card').forEach(c=>c.classList.remove('selected'));
   const el=document.getElementById('svc-'+i); if(el) el.classList.add('selected');
   selService=services[i]; haptic('medium');
+  price60=parseInt(selService.price)||35; selPrice=selDurMin===60?price60:PRICE_90;
+  document.getElementById('price60').textContent=price60+'€'; document.getElementById('price90').textContent=PRICE_90+'€';
   setTimeout(()=>goStep(1),180);
 }
-function selectDur(min,price){
-  selDurMin=min; selPrice=price;
+function selectDur(min){
+  selDurMin=min; selPrice=min===60?price60:PRICE_90;
   document.getElementById('dur60').classList.toggle('selected',min===60);
   document.getElementById('dur90').classList.toggle('selected',min===90);
   try{tg?.HapticFeedback?.selectionChanged();}catch(e){}
@@ -848,7 +858,7 @@ function goStep(n){
   if(n===3){updateSummary(); setTimeout(()=>document.getElementById('inp-name').focus(),300);}
 }
 function resetBook(){
-  selService=null;selDurMin=60;selPrice=35;selYear=selMonth=selDay=selTime=null;
+  selService=null;selDurMin=60;selPrice=35;price60=35;selYear=selMonth=selDay=selTime=null;
   const btn=document.getElementById('btn-confirm');
   if(btn){btn.disabled=false;btn.textContent=t('confirm');}
   goStep(0);
@@ -904,7 +914,7 @@ function changeMonth(dir){
 // ── SUMMARY & CONFIRM ──────────────────────────────────────────────────────
 function updateSummary(){
   document.getElementById('booking-summary').innerHTML=`
-    <div class="summary-row"><span class="label">${t('service')}</span><span class="value">${svcName(selService.name)}</span></div>
+    <div class="summary-row"><span class="label">${t('service')}</span><span class="value">${escHtml(svcName(selService.name))}</span></div>
     <div class="summary-row"><span class="label">${t('dur_label')}</span><span class="value">${selDurMin} ${t('min')} · ${selPrice}€</span></div>
     <div class="summary-row"><span class="label">${t('date')}</span><span class="value">${selDay} ${t('months_gen')[selMonth-1]}</span></div>
     <div class="summary-row"><span class="label">${t('time_label')}</span><span class="value">${selTime}</span></div>`;
@@ -931,7 +941,7 @@ async function confirmBooking(){
     if(data.ok){
       savePhone(phone);
       document.getElementById('success-detail').innerHTML=`
-        <div class="summary-row"><span class="label">${t('service')}</span><span class="value">${svcName(selService.name)}</span></div>
+        <div class="summary-row"><span class="label">${t('service')}</span><span class="value">${escHtml(svcName(selService.name))}</span></div>
         <div class="summary-row"><span class="label">${t('date')}</span><span class="value">${selDay} ${t('months_gen')[selMonth-1]}</span></div>
         <div class="summary-row"><span class="label">${t('time_label')}</span><span class="value">${selTime}</span></div>
         <div class="summary-row"><span class="label">${t('dur_label')}</span><span class="value">${selDurMin} ${t('min')} · ${selPrice}€</span></div>`;
@@ -961,7 +971,7 @@ function renderReviews(){
         <div class="review-stars">${'★'.repeat(r.rating)}</div>
         ${r.text?`<div class="review-text" id="rv-text-${i}">${escHtml(r.text)}</div>`:''}
         ${r.text&&detectLang(r.text)!==lang?`<button class="rev-translate" id="rv-btn-${i}" onclick="translateReview(${i},this)">🌐 ${t('translate')}</button>`:''}
-        <div class="review-meta">${svcName(r.service)} · ${escHtml(r.username)}</div>
+        <div class="review-meta">${escHtml(svcName(r.service))} · ${escHtml(r.username)}</div>
       </div>`).join('')+`</div>`
     +(rest>0?`<button class="btn btn-outline" style="max-width:360px;display:block;margin:8px auto 0" onclick="showAllReviews()">${t('show_more')} (${rest})</button>`:'');
 }
@@ -1007,7 +1017,7 @@ async function translateReview(i,btn){
 let selRevRating=0;
 function fillReviewServiceSelect(){
   const sel=document.getElementById('rev-service');
-  sel.innerHTML=(services.length?services:[{name:'Массаж'}]).map(s=>`<option value="${s.name}">${svcName(s.name)}</option>`).join('');
+  sel.innerHTML=(services.length?services:[{name:'Массаж'}]).map(s=>`<option value="${escHtml(s.name)}">${escHtml(svcName(s.name))}</option>`).join('');
 }
 function renderRevStars(){
   document.querySelectorAll('#rev-stars span').forEach(st=>{
@@ -1093,7 +1103,7 @@ async function fetchAndRenderBookings(query){
     }
     el.innerHTML=bookings.map(b=>`
       <div class="booking-card">
-        <div class="svc">${svcName(b.service)}</div>
+        <div class="svc">${escHtml(svcName(b.service))}</div>
         <div class="detail">${b.day} ${t('months_gen')[b.month-1]} · ${b.time}</div>
         <div class="detail">${b.name} · ${b.phone}</div>
         <button class="btn btn-outline" style="margin-top:10px;padding:10px" onclick="cancelMyBooking(${b.id})">${t('cancel_btn')}</button>
@@ -1116,14 +1126,21 @@ async function cancelMyBooking(id){
 
 // ── GALLERY ────────────────────────────────────────────────────────────────
 // Фото лежат в images/, видео в videos/. Пример: ['photo-1.jpg', {video:'massage01.mp4'}]
-const GALLERY=[{video:'massage01.mp4'}];
+let GALLERY=[];
 let lbIndex=0;
-(function renderGallery(){
+function renderGallery(){
   document.getElementById('gallery-empty').style.display=GALLERY.length?'none':'block';
   document.getElementById('gallery-grid').innerHTML=GALLERY.map((f,i)=>f.video
     ?`<button class="gallery-item gallery-video" onclick="openLightbox(${i})" aria-label="Video ${i+1}"><video src="/videos/${f.video}#t=0.6" muted playsinline preload="metadata" tabindex="-1"></video><span class="play-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6.5 9 5.5-9 5.5z"/></svg></span></button>`
     :`<button class="gallery-item" onclick="openLightbox(${i})" aria-label="Photo ${i+1}"><img src="/images/${f}" alt="" loading="lazy" decoding="async"></button>`).join('');
-})();
+}
+async function loadGallery(){
+  try{
+    const items=await fetch(API+'/api/gallery').then(r=>r.json());
+    GALLERY=items.map(i=>i.kind==='video'?{video:i.file}:i.file);
+  }catch(e){}
+  renderGallery();
+}
 function openLightbox(i){lbIndex=i;lbShow();document.getElementById('lightbox').classList.add('open');haptic('light');}
 function closeLightbox(){
   document.getElementById('lightbox').classList.remove('open');
@@ -1167,6 +1184,7 @@ document.addEventListener('keydown',e=>{
   addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>8),{passive:true});
 })();
 loadServices();
+loadGallery();
 </script>
 </body>
 </html>

@@ -32,6 +32,13 @@ def notify_admins(text):
         except Exception:
             pass
 
+def notify_user(chat_id, text):
+    """Сообщение конкретному клиенту (например, об отмене брони из веб-админки)."""
+    if not API_TOKEN or not chat_id: return
+    url = f"https://api.telegram.org/bot{API_TOKEN}/sendMessage"
+    data = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode()
+    urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=5)
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -50,8 +57,10 @@ _ensure_duration_column()
 
 def get_services():
     con = db()
-    rows = con.execute("SELECT name,price,duration,duration_min,img FROM services WHERE active=1 ORDER BY sort_order").fetchall(); con.close()
-    return [{"name":r[0],"price":r[1],"duration":r[2],"duration_min":r[3],"img":r[4]} for r in rows]
+    rows = con.execute("SELECT name,price,duration,duration_min,img,description,name_et,name_en,desc_et,desc_en "
+                       "FROM services WHERE active=1 ORDER BY sort_order, id").fetchall(); con.close()
+    return [{"name":r[0],"price":r[1],"duration":r[2],"duration_min":r[3],"img":r[4],
+             "description":r[5] or "","name_et":r[6] or "","name_en":r[7] or "","desc_et":r[8] or "","desc_en":r[9] or ""} for r in rows]
 
 def get_reviews():
     con = db()
@@ -245,6 +254,10 @@ def api_book(b: BookingIn):
         f"👤 {b.name} 📞 {b.phone}"
     )
     return {"ok": True, "id": cur.lastrowid}
+
+import admin_api
+admin_api.init(db, now_t, notify_user, BASE_DIR, ADMIN_IDS, os.getenv("SITE_URL", "https://skffmassage.com"))
+app.include_router(admin_api.router)
 
 if os.path.exists(os.path.join(BASE_DIR, "images")):
     app.mount("/images", StaticFiles(directory=os.path.join(BASE_DIR, "images")), name="images")
