@@ -25,9 +25,10 @@
   .brand span{font-weight:600;font-size:11px;letter-spacing:.28em;color:var(--gold2);margin-left:8px;}
   .brand{color:inherit;text-decoration:none;}
   @media(max-width:430px){.brand span{display:none;}}
-  .tabs{max-width:900px;margin:0 auto;padding:0 16px;display:flex;gap:6px;}
-  .tab{flex:1;padding:12px 8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-weight:600;cursor:pointer;letter-spacing:.04em;}
-  .tab.active{color:var(--gold2);border-bottom-color:var(--gold);}
+  .tabs{max-width:900px;margin:0 auto;padding:2px 16px 12px;display:flex;flex-wrap:wrap;gap:6px;}
+  .tab{padding:8px 15px;background:none;border:1px solid var(--line2);border-radius:999px;color:var(--muted);font-weight:600;font-size:14px;cursor:pointer;transition:color .2s,border-color .2s,background .2s;}
+  .tab:hover{border-color:var(--gold);}
+  .tab.active{color:#120d04;background:linear-gradient(180deg,#d2b57d,#b8975a);border-color:transparent;}
   .btn{padding:10px 16px;border:1px solid var(--line2);background:transparent;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;transition:border-color .2s,background .2s,transform .1s;}
   .btn:hover{border-color:var(--gold);}
   .btn:active{transform:scale(.97);}
@@ -105,6 +106,20 @@
   .gal-item .badge{position:absolute;top:6px;left:6px;margin:0;background:rgba(0,0,0,.7);}
   .progress{height:8px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin:10px 0 4px;}
   .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .2s;}
+  .days{display:flex;gap:6px;flex-wrap:wrap;}
+  .days button{min-width:46px;padding:10px 0;border-radius:10px;border:1px solid var(--line2);background:transparent;cursor:pointer;font-weight:700;}
+  .days button.on{border-color:var(--gold);background:var(--gold-dim);color:var(--gold2);}
+  .tchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .tchip{display:inline-flex;align-items:center;gap:6px;padding:7px 8px 7px 13px;border-radius:999px;border:1px solid var(--gold);background:var(--gold-dim);font-weight:700;}
+  .tchip button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;}
+  .tchip button:hover{color:var(--red);}
+  .tchip.closed{border-color:rgba(224,98,93,.5);background:rgba(224,98,93,.1);color:#ffb3af;text-decoration:line-through;cursor:pointer;}
+  .tchip.open{cursor:pointer;}
+  .switch{display:flex;gap:12px;align-items:flex-start;cursor:pointer;}
+  .switch input{width:22px;height:22px;accent-color:#c0a068;margin-top:2px;flex-shrink:0;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .grid3 .field label{text-transform:none;letter-spacing:.02em;font-size:12px;}
+  @media(max-width:520px){.grid3{grid-template-columns:1fr;gap:0;}}
   .pwwrap{position:relative;}
   .pwwrap input{padding-right:46px;}
   .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;}
@@ -133,13 +148,15 @@
   <header>
     <div class="head">
       <a class="brand" href="/" aria-label="На сайт">SKF<span>АДМИНКА</span></a>
-      <div style="display:flex;gap:6px"><a class="btn btn-sm" href="/" style="text-decoration:none">Сайт</a><button class="btn btn-sm" id="pw-btn">Пароль</button><button class="btn btn-sm" id="logout">Выйти</button></div>
+      <div style="display:flex;gap:6px"><a class="btn btn-sm" href="/" style="text-decoration:none">На сайт</a><button class="btn btn-sm" id="pw-btn">Пароль</button></div>
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="bookings">Брони</button>
       <button class="tab" data-tab="services">Услуги</button>
       <button class="tab" data-tab="reviews">Отзывы</button>
       <button class="tab" data-tab="gallery">Галерея</button>
+      <button class="tab" data-tab="schedule">График</button>
+      <button class="tab" data-tab="site">Сайт</button>
     </div>
   </header>
 
@@ -184,6 +201,31 @@
       <div id="gal-progress" hidden><div class="note" id="gal-progress-text"></div><div class="progress"><i id="gal-progress-bar"></i></div></div>
       <div id="gal-list"></div>
     </section>
+
+    <section id="tab-schedule" hidden>
+      <div class="card" style="margin-top:18px">
+        <label class="switch"><input type="checkbox" id="sc-open"><span><b>Открыть всё</b><br><span class="note">Запись открыта на любые дни недели и закрытые даты, пока галочка стоит. Когда уберёшь её, всё вернётся как было: рабочие дни и закрытые даты и часы.</span></span></label>
+      </div>
+      <h2>Рабочие дни</h2>
+      <div class="days" id="sc-days"></div>
+      <h2>Время начала сеансов</h2>
+      <div class="tchips" id="sc-slots"></div>
+      <div class="row" style="align-items:center;max-width:320px"><input type="time" id="sc-add" step="300" style="padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:16px"><button class="btn" id="sc-add-btn" style="flex:0 0 auto">Добавить время</button></div>
+      <h2>Отдых после сеанса</h2>
+      <div class="row" style="align-items:center;max-width:260px"><input type="number" id="sc-rest" min="0" max="180" step="5" style="padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:16px;color:var(--text)"><span class="note" style="flex:0 0 auto">минут</span></div>
+      <div style="margin-top:16px"><button class="btn btn-primary" id="sc-save">Сохранить график</button> <span class="note" id="sc-saved"></span></div>
+      <h2>Закрыть дату или время</h2>
+      <div class="field" style="max-width:260px"><label>Дата</label><input type="date" id="sc-date"></div>
+      <div id="sc-day"></div>
+      <h2>Сейчас закрыто</h2>
+      <div id="sc-blocked"></div>
+    </section>
+
+    <section id="tab-site" hidden>
+      <div class="toolbar"><div class="note">Эти тексты, контакты и фото видны на сайте и в боте. Сохрани, и изменения появятся сразу.</div><button class="btn btn-primary" id="st-save">Сохранить</button></div>
+      <div id="st-form"></div>
+      <div style="margin:10px 0 30px"><button class="btn btn-primary" id="st-save2">Сохранить</button></div>
+    </section>
   </div>
 </div>
 
@@ -221,13 +263,12 @@ $('#modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')closeModal
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 // ── вкладки ──────────────────────────────────────────────────────────────────
-const LOADERS={bookings:()=>loadBookings(),services:()=>loadServices(),reviews:()=>loadReviews(),gallery:()=>loadGallery()};
+const LOADERS={bookings:()=>loadBookings(),services:()=>loadServices(),reviews:()=>loadReviews(),gallery:()=>loadGallery(),schedule:()=>loadSchedule(),site:()=>loadSite()};
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
   for(const k in LOADERS) $('#tab-'+k).hidden=k!==b.dataset.tab;
   LOADERS[b.dataset.tab]();
 });
-$('#logout').onclick=async()=>{try{await api('POST','/api/admin/logout');}catch(e){} showLogin();};
 
 // ── БРОНИ ────────────────────────────────────────────────────────────────────
 document.querySelectorAll('#bk-filter .chip').forEach(c=>c.onclick=()=>{
@@ -538,6 +579,127 @@ $('#gal-video').onchange=async e=>{
     hideProgress(); toast('Видео загружено, сжимается на сервере'); loadGallery();
   }catch(err){hideProgress();fail(err);}
 };
+
+
+// ── ГРАФИК ───────────────────────────────────────────────────────────────────
+const WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+let SC=null, scDays=[], scSlots=[];
+async function loadSchedule(){
+  try{
+    SC=await api('GET','/api/admin/schedule');
+    scDays=[...SC.config.work_days]; scSlots=[...SC.config.slots];
+    $('#sc-rest').value=SC.config.rest; $('#sc-open').checked=SC.open_all;
+    if(!$('#sc-date').value){const d=new Date(Date.now()+864e5);$('#sc-date').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+    renderSchedule();
+  }catch(e){fail(e);}
+}
+function renderSchedule(){
+  $('#sc-days').innerHTML=WD.map((n,i)=>`<button type="button" data-d="${i}" class="${scDays.includes(i)?'on':''}">${n}</button>`).join('');
+  document.querySelectorAll('#sc-days button').forEach(b=>b.onclick=()=>{const d=+b.dataset.d;scDays=scDays.includes(d)?scDays.filter(x=>x!==d):[...scDays,d].sort();renderSchedule();});
+  $('#sc-slots').innerHTML=scSlots.map((t,i)=>`<span class="tchip">${esc(t)}<button type="button" data-i="${i}" aria-label="Убрать ${esc(t)}">✕</button></span>`).join('')||'<span class="note">Времён нет</span>';
+  document.querySelectorAll('#sc-slots button').forEach(b=>b.onclick=()=>{scSlots.splice(+b.dataset.i,1);renderSchedule();});
+  renderDay(); renderBlocked();
+}
+$('#sc-add-btn').onclick=()=>{
+  const v=$('#sc-add').value; if(!v){toast('Выбери время',true);return;}
+  if(!scSlots.includes(v)) scSlots=[...scSlots,v].sort(); $('#sc-add').value=''; renderSchedule();
+};
+$('#sc-open').onchange=async e=>{
+  try{await api('PUT','/api/admin/schedule',{open_all:e.target.checked});toast(e.target.checked?'Открыто всё: запись на любые дни':'Расписание возвращено');loadSchedule();}
+  catch(err){fail(err);e.target.checked=!e.target.checked;}
+};
+$('#sc-save').onclick=async()=>{
+  if(!scDays.length){toast('Выбери хотя бы один рабочий день',true);return;}
+  if(!scSlots.length){toast('Добавь хотя бы одно время',true);return;}
+  $('#sc-save').disabled=true;
+  try{await api('PUT','/api/admin/schedule',{work_days:scDays,slots:scSlots,rest:+$('#sc-rest').value||0});toast('График сохранён');loadSchedule();}
+  catch(e){fail(e);}
+  $('#sc-save').disabled=false;
+};
+function fmtDate(iso){const [y,m,d]=iso.split('-').map(Number);return d+' '+MONTHS[m-1]+', '+DAYS[new Date(y,m-1,d).getDay()];}
+function renderDay(){
+  const el=$('#sc-day'), date=$('#sc-date').value;
+  if(!SC||!date){el.innerHTML='';return;}
+  const dayClosed=SC.blocked.days.includes(date), closedSlots=SC.blocked.slots[date]||[];
+  const wd=(new Date(date+'T12:00:00').getDay()+6)%7, working=SC.open_all||scDays.includes(wd);
+  el.innerHTML=`<div class="card"><div style="margin-bottom:10px"><b>${esc(fmtDate(date))}</b> ${working?'':'<span class="badge off">выходной по графику</span>'}${dayClosed?'<span class="badge off">день закрыт</span>':''}</div>
+    <button class="btn btn-sm ${dayClosed?'':'btn-danger'}" id="sc-day-btn">${dayClosed?'Открыть день':'Закрыть весь день'}</button>
+    ${dayClosed?'':`<div class="note" style="margin:12px 0 6px">Или закрой отдельное время (нажми, чтобы закрыть или открыть):</div><div class="tchips">${SC.config.slots.map(t=>`<span class="tchip ${closedSlots.includes(t)?'closed':'open'}" data-t="${esc(t)}">${esc(t)}</span>`).join('')}</div>`}</div>`;
+  $('#sc-day-btn').onclick=()=>blockToggle(date,null,dayClosed);
+  el.querySelectorAll('.tchip[data-t]').forEach(c=>c.onclick=()=>blockToggle(date,c.dataset.t,closedSlots.includes(c.dataset.t)));
+}
+$('#sc-date').onchange=renderDay;
+async function blockToggle(date,time,isBlocked){
+  try{await api('POST','/api/admin/schedule/'+(isBlocked?'unblock':'block'),{date,time});toast(isBlocked?'Открыто':'Закрыто');await loadSchedule();}
+  catch(e){fail(e);}
+}
+function renderBlocked(){
+  const el=$('#sc-blocked'); if(!SC){el.innerHTML='';return;}
+  const rows=[];
+  SC.blocked.days.forEach(d=>rows.push({d,t:null}));
+  Object.entries(SC.blocked.slots).forEach(([d,ts])=>ts.forEach(t=>rows.push({d,t})));
+  rows.sort((a,b)=>a.d.localeCompare(b.d)||String(a.t).localeCompare(String(b.t)));
+  el.innerHTML=rows.length?rows.map(r=>`<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px"><span>${esc(fmtDate(r.d))} · <b>${r.t?esc(r.t):'весь день'}</b></span><button class="btn btn-sm" data-d="${r.d}" data-t="${r.t||''}">Открыть</button></div>`).join(''):'<div class="note">Ничего не закрыто</div>';
+  el.querySelectorAll('button[data-d]').forEach(b=>b.onclick=()=>blockToggle(b.dataset.d,b.dataset.t||null,true));
+}
+
+// ── САЙТ: тексты, контакты, соцсети, фото ────────────────────────────────────
+let ST=null, stPhoto=null;
+async function loadSite(){
+  try{const r=await api('GET','/api/admin/site');ST=r.site;stPhoto=null;renderSite();}catch(e){fail(e);}
+}
+const i18n=(key,label,hint)=>`<div class="field"><label>${label}</label><div class="grid3">${[['ru','Русский'],['et','Эстонский'],['en','Английский']].map(([l,n])=>`<div class="field" style="margin:0 0 6px"><label>${n}</label><input data-k="${key}.${l}" value="${esc(ST[key][l])}" maxlength="80"></div>`).join('')}</div>${hint?`<div class="note">${hint}</div>`:''}</div>`;
+const one=(key,label,ph,max)=>`<div class="field"><label>${label}</label><input data-k="${key}" value="${esc(ST[key])}" maxlength="${max||100}" placeholder="${esc(ph||'')}"></div>`;
+const soc=(key,label,ph)=>`<div class="field"><label>${label}</label><input data-k="socials.${key}" value="${esc(ST.socials[key])}" maxlength="200" placeholder="${esc(ph)}"></div>`;
+function renderSite(){
+  $('#st-form').innerHTML=`
+    <div class="card"><h2 style="margin-top:0">Главное фото</h2>
+      <div class="photo-row"><img id="st-img" src="/${esc(ST.photo)}" alt="" style="width:130px;height:160px">
+        <div><label class="btn btn-sm" style="display:inline-block;cursor:pointer">Выбрать фото<input type="file" id="st-file" accept="image/*" hidden></label><div class="note">Портрет на тёмном фоне смотрится лучше всего.</div></div></div></div>
+    <div class="card"><h2 style="margin-top:0">Имя и подписи</h2>
+      ${i18n('name','Имя','Крупно на главной странице')}
+      ${i18n('grade','Подпись под именем')}
+      ${i18n('city','Город (над именем)')}
+      <button type="button" class="btn btn-sm" id="st-tr">Перевести с русского автоматически</button></div>
+    <div class="card"><h2 style="margin-top:0">О компании</h2>
+      ${one('company','Компания','SKF-MASSAGE OÜ',60)}${one('cert','Сертификат','№245245',30)}
+      ${i18n('experience','Опыт работы')}</div>
+    <div class="card"><h2 style="margin-top:0">Контакты</h2>
+      ${one('address','Адрес','Linnamäe tee 24, Tallinn',100)}${one('phone','Телефон','+372 ...',25)}${one('telegram','Telegram (имя пользователя)','SKF_Massage',60)}</div>
+    <div class="card"><h2 style="margin-top:0">Соцсети</h2><div class="note" style="margin-bottom:10px">Ссылка должна начинаться с https://. Пустое поле скрывает значок на сайте.</div>
+      ${soc('stebby','Stebby','https://app.stebby.eu/...')}${soc('facebook','Facebook','https://www.facebook.com/...')}${soc('instagram','Instagram','https://www.instagram.com/...')}${soc('tiktok','TikTok','https://www.tiktok.com/@...')}${soc('youtube','YouTube','https://www.youtube.com/@...')}</div>`;
+  $('#st-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{stPhoto=await resizeImage(f,1600,0.88);$('#st-img').src=stPhoto;}catch(err){toast(err.message,true);}};
+  $('#st-tr').onclick=async()=>{
+    const btn=$('#st-tr'); btn.disabled=true; btn.textContent='Перевожу…';
+    const tr=async(text,tl)=>{if(!text.trim())return'';const r=await fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,sl:'ru',tl})});const d=await r.json();if(!d.ok)throw new Error(d.error||'Не удалось перевести');return d.text;};
+    try{
+      for(const key of ['name','grade','city','experience']){
+        const ru=document.querySelector(`[data-k="${key}.ru"]`).value;
+        for(const l of ['et','en']) document.querySelector(`[data-k="${key}.${l}"]`).value=await tr(ru,l);
+      }
+      toast('Переведено, проверь тексты');
+    }catch(err){toast(err.message,true);}
+    btn.disabled=false; btn.textContent='Перевести с русского автоматически';
+  };
+}
+function collectSite(){
+  const out={name:{},grade:{},city:{},experience:{},socials:{}};
+  document.querySelectorAll('#st-form [data-k]').forEach(i=>{
+    const k=i.dataset.k.split('.');
+    if(k.length===2) out[k[0]][k[1]]=i.value; else out[k[0]]=i.value;
+  });
+  return out;
+}
+async function saveSite(){
+  const btns=[$('#st-save'),$('#st-save2')]; btns.forEach(b=>b.disabled=true);
+  try{
+    await api('PUT','/api/admin/site',collectSite());
+    if(stPhoto) await api('POST','/api/admin/site/photo',{image:stPhoto});
+    toast('Сайт обновлён'); loadSite();
+  }catch(e){fail(e);}
+  btns.forEach(b=>b.disabled=false);
+}
+$('#st-save').onclick=saveSite; $('#st-save2').onclick=saveSite;
 
 
 // ── ВХОД ПО ПАРОЛЮ и смена пароля ───────────────────────────────────────────

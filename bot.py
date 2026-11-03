@@ -257,6 +257,7 @@ def get_referral_count(user_id):
 # ── Vouchers ──────────────────────────────────────────────────────────────────
 import random, string
 import secrets, hashlib, time
+import sepa_config
 
 def generate_voucher_code():
     return "SERGEY-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -633,13 +634,30 @@ def get_all_blocked_slots():
     for date,time in rows: result.setdefault(date,[]).append(time)
     return result
 
-CONTACTS_SHORT = "📞 +372 53 730 882\n💬 Telegram: @SKF_Massage"
+def get_site_cfg():
+    """Контакты и тексты сайта из базы (редактируются в веб-админке)."""
+    con = db_connect()
+    try: return sepa_config.get_site(con)
+    finally: con.close()
+
+def get_schedule_cfg():
+    """График работы из базы (редактируется в веб-админке)."""
+    con = db_connect()
+    try: return sepa_config.get_schedule(con)
+    finally: con.close()
+
+def contacts_short():
+    s = get_site_cfg()
+    return f"📞 {s['phone']}\n💬 Telegram: @{s['telegram']}"
+
+def maps_url(address):
+    return "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote(address, safe="").replace("%20", "+")
+
 
 MONTHS = {1:"Январь",2:"Февраль",3:"Март",4:"Апрель",5:"Май",6:"Июнь",
           7:"Июль",8:"Август",9:"Сентябрь",10:"Октябрь",11:"Ноябрь",12:"Декабрь"}
 MONTHS_GEN = {1:"Января",2:"Февраля",3:"Марта",4:"Апреля",5:"Мая",6:"Июня",
               7:"Июля",8:"Августа",9:"Сентября",10:"Октября",11:"Ноября",12:"Декабря"}
-TIME_SLOTS = ["12:00","14:00","16:00","18:00"]
 
 class Booking(StatesGroup):
     service=State(); duration=State(); year=State(); month=State(); day=State(); time=State(); name=State(); phone=State(); voucher=State()
@@ -684,7 +702,6 @@ def duration_minutes(svc):
     if svc.get("duration_min"): return svc["duration_min"]
     m = re.search(r"(\d+)", svc.get("duration","60")); return int(m.group(1)) if m else 60
 
-REST_MINUTES = 30  # отдых Сергею после каждого массажа перед следующей записью
 
 def booking_duration(b):
     """Реальная длительность конкретной брони — берём сохранённое значение
@@ -695,21 +712,18 @@ def booking_duration(b):
 # Расписание работы по дням недели (0=Пн ... 6=Вс)
 # Рабочие дни (0=Пн ... 6=Вс): Пн, Ср, Пт, Сб. Вторник, четверг и воскресенье — выходные.
 # Совпадает 1-в-1 с api.py.
-WORK_DAYS = {0, 2, 4, 5}
 
 # Во все рабочие дни запись возможна только на эти 4 времени (время НАЧАЛА сеанса).
 # Никакого почасового диапазона и полу-часовых слотов.
-FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
-_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in FIXED_SLOTS)
-_CLOSE_MIN = _SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
 
 def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     now = now_tallinn()
     key = date_key(year, month, day)
 
     open_all = is_open_all()
+    cfg = get_schedule_cfg()
     weekday = datetime(year, month, day).weekday()
-    if weekday not in WORK_DAYS and not open_all:
+    if weekday not in cfg["work_days"] and not open_all:
         return []
 
     manual_blocked = set()
@@ -722,18 +736,18 @@ def get_available_slots(year, month, day, new_dur_min=60, exclude_bid=None):
     for b in get_all_bookings():
         if exclude_bid and b["id"] == exclude_bid: continue
         if b["year"] != year or b["month"] != month or b["day"] != day: continue
-        dur = booking_duration(b) + REST_MINUTES
+        dur = booking_duration(b) + cfg["rest"]
         h, m = int(b["time"].split(":")[0]), int(b["time"].split(":")[1])
         booked.append((h*60+m, h*60+m+dur))
 
     def is_free(start, dur):
-        if start + dur > _CLOSE_MIN: return False
+        if start + dur > cfg["close_min"]: return False
         for bs, be in booked:
             if start < be and start+dur > bs: return False
         if start in manual_blocked: return False
         return True
 
-    candidates = list(_SLOT_MIN)
+    candidates = list(cfg["slot_min"])
 
     if year == now.year and month == now.month and day == now.day:
         now_min = now.hour * 60 + now.minute
@@ -783,7 +797,7 @@ def format_booking(b, idx=None, username=None):
     prefix = f"Бронь №{idx}\n" if idx else ""
     svc = get_service(b["service"]); dur_str = svc["duration"] if svc else ""
     tg_line = f" | 💬 @{username}" if username else ""
-    addr = "\n\n🏠 Linnamäe tee 24" if username is None else ""
+    addr = f"\n\n🏠 {get_site_cfg()['address']}" if username is None else ""
     countdown = time_until_booking(b)
     countdown_line = f"\n{countdown}" if countdown else ""
     return f"{prefix}💆 {b['service']}\n⏱ Длительность: ~{dur_str}\n🕐 {b['time']} | {b['day']} {month_name}{countdown_line}\n👤 {b['name']} 📞 {b['phone']}{tg_line}{addr}".strip()
@@ -874,13 +888,15 @@ def make_calendar_url(b) -> str:
         end = start + timedelta(minutes=dur)
         fmt = "%Y%m%dT%H%M%S"
         title = f"Массаж у Сергея — {b['service']}"
-        details = f"Адрес: Linnamäe tee 24\nТелефон: +372 53 730 882"
+        site = get_site_cfg()
+        details = f"Адрес: {site['address']}\nТелефон: {site['phone']}"
+        q = urllib.parse.quote_plus
         url = (
             f"https://calendar.google.com/calendar/r/eventedit"
-            f"?text={title.replace(' ', '+')}"
+            f"?text={q(title)}"
             f"&dates={start.strftime(fmt)}/{end.strftime(fmt)}"
-            f"&details={details.replace(' ', '+').replace(':', '%3A')}"
-            f"&location=Linnam%C3%A4e+tee+24"
+            f"&details={q(details)}"
+            f"&location={q(site['address'])}"
         )
         return url
     except Exception:
@@ -1046,6 +1062,7 @@ def schedule_days_kb(month, action):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def schedule_slots_kb(month, day, action):
+    slots_cfg = get_schedule_cfg()["slots"]
     year=now_tallinn().year; key=date_key(year,month,day)
     blocked_manual=get_blocked_slots_for_date(key)
     booked_slots=set()
@@ -1056,9 +1073,9 @@ def schedule_slots_kb(month, day, action):
             start=h*60+m
             for minute in range(start,start+dur,60):
                 slot=f"{minute//60:02d}:00"
-                if slot in TIME_SLOTS: booked_slots.add(slot)
+                if slot in slots_cfg: booked_slots.add(slot)
     rows=[]; row=[]
-    for slot in TIME_SLOTS:
+    for slot in slots_cfg:
         if slot in blocked_manual: label=f"🔒{slot}"
         elif slot in booked_slots: label=f"👤{slot}"
         else: label=slot
@@ -1119,7 +1136,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         photo=photo,
         caption=(
             "*Сергей — мастер массажа в Таллине* 💆\n\n"
-            "⏱ Пн, Ср, Пт, Сб: запись на 12:00, 14:00, 16:00, 18:00\n\n"
+            f"⏱ {sepa_config.describe_schedule_ru(get_schedule_cfg())}\n\n"
             "Запишитесь онлайн — это займёт 1 минуту 👇"
         ),
         parse_mode="Markdown",
@@ -1415,15 +1432,16 @@ async def cb_portfolio(call: types.CallbackQuery):
 
 @dp.message(F.text.in_({"💬 Связаться", "💬 Написать"}))   # "💬 Написать" — старое название
 async def btn_chat(message: types.Message):
+    site = get_site_cfg()
     rows = [
-        [InlineKeyboardButton(text="✍️ Написать Сергею", url="https://t.me/SKF_Massage")],
-        [InlineKeyboardButton(text="📍 Как добраться", url="https://www.google.com/maps/search/?api=1&query=Linnam%C3%A4e+tee+24+Tallinn")]]
+        [InlineKeyboardButton(text="✍️ Написать Сергею", url=f"https://t.me/{site['telegram']}")],
+        [InlineKeyboardButton(text="📍 Как добраться", url=maps_url(site["address"]))]]
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
     await message.answer(
         "💬 Связаться с Сергеем\n\n"
-        "📍 Linnamäe tee 24, Tallinn\n"
-        "📞 +372 53 730 882\n"
-        "✈️ Telegram: @SKF_Massage",
+        f"📍 {site['address']}\n"
+        f"📞 {site['phone']}\n"
+        f"✈️ Telegram: @{site['telegram']}",
         reply_markup=kb)
 
 @dp.message(Command("web"))
@@ -1723,7 +1741,7 @@ async def _finalize_booking(message, state, user_id):
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=confirm_kb_rows)
     price_show = data.get("override_price") or (svc["price"] if svc else "")
     dur_show = data.get("override_dur_str") or (svc["duration"] if svc else "")
-    await message.answer(f"✅ Бронь подтверждена!\n\n{format_booking(b)}{voucher_line}\n⏱ {dur_show} | 💰 {price_show}\n\n━━━━━━━━━━━━━━━━━\n📍 Контакты Сергея:\n{CONTACTS_SHORT}", reply_markup=confirm_kb)
+    await message.answer(f"✅ Бронь подтверждена!\n\n{format_booking(b)}{voucher_line}\n⏱ {dur_show} | 💰 {price_show}\n\n━━━━━━━━━━━━━━━━━\n📍 Контакты Сергея:\n{contacts_short()}", reply_markup=confirm_kb)
     try:
         con_u = db_connect()
         u_row = con_u.execute("SELECT username FROM bot_users WHERE user_id=?", (user_id,)).fetchone()
@@ -2530,12 +2548,12 @@ async def reminder_loop():
                 svc=get_service(b["service"]); dur_str=svc["duration"] if svc else ""
                 if not b["reminded_24"] and 1430<=total_min<=1450:
                     try:
-                        await bot.send_message(b["user_id"], f"🔔 Напоминание!\n\nЗавтра у вас запись:\n💅 {b['service']} ({dur_str})\n📅 {b['day']} {MONTHS_GEN[b['month']]}\n⏱ {b['time']}\n\n📍 {CONTACTS_SHORT}")
+                        await bot.send_message(b["user_id"], f"🔔 Напоминание!\n\nЗавтра у вас запись:\n💅 {b['service']} ({dur_str})\n📅 {b['day']} {MONTHS_GEN[b['month']]}\n⏱ {b['time']}\n\n📍 {contacts_short()}")
                         con2=db_connect(); con2.execute("UPDATE bookings SET reminded_24=1 WHERE id=?", (b["id"],)); con2.commit(); con2.close()
                     except Exception as _e: print(f"[WARN] {_e}")
                 if not b["reminded_2"] and 110<=total_min<=130:
                     try:
-                        await bot.send_message(b["user_id"], f"⏰ Через 2 часа ваша запись!\n\n💅 {b['service']} ({dur_str})\n📅 {b['day']} {MONTHS_GEN[b['month']]}\n⏱ {b['time']}\n\n📍 {CONTACTS_SHORT}")
+                        await bot.send_message(b["user_id"], f"⏰ Через 2 часа ваша запись!\n\n💅 {b['service']} ({dur_str})\n📅 {b['day']} {MONTHS_GEN[b['month']]}\n⏱ {b['time']}\n\n📍 {contacts_short()}")
                         con2=db_connect(); con2.execute("UPDATE bookings SET reminded_2=1 WHERE id=?", (b["id"],)); con2.commit(); con2.close()
                     except Exception as _e: print(f"[WARN] {_e}")
                 svc_obj=get_service(b["service"]); dur_m=duration_minutes(svc_obj)

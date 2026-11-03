@@ -1,4 +1,5 @@
 import sqlite3, os, calendar, re, urllib.request, urllib.parse
+import sepa_config
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from fastapi import FastAPI, Request
@@ -67,37 +68,24 @@ def get_reviews():
     rows = con.execute("SELECT rating,text,service,created_at,username FROM reviews ORDER BY id DESC LIMIT 100").fetchall(); con.close()
     return [{"rating":r[0],"text":r[1] or "","service":r[2],"date":r[3][:10] if r[3] else "","username":r[4] or "Аноним"} for r in rows]
 
-# Тот же график работы, что и в bot.py (WORK_DAYS, FIXED_SLOTS) — держим в одном месте
-# логику, но значения должны совпадать 1-в-1, иначе сайт и бот будут расходиться.
-# Рабочие дни (0=Пн ... 6=Вс): Пн, Ср, Пт, Сб. Вторник, четверг и воскресенье — выходные.
-# Совпадает 1-в-1 с bot.py.
-WORK_DAYS = {0, 2, 4, 5}
-
-# Во все рабочие дни запись возможна только на эти 4 времени (время НАЧАЛА сеанса).
-# Никакого почасового диапазона и полу-часовых слотов.
-FIXED_SLOTS = ["12:00", "14:00", "16:00", "18:00"]
-_SLOT_MIN = sorted(int(s[:2]) * 60 + int(s[3:]) for s in FIXED_SLOTS)
-_CLOSE_MIN = _SLOT_MIN[-1] + 90  # последний слот + макс. длительность услуги (90 мин)
-
-REST_MINUTES = 30  # отдых Сергею после каждого массажа — то же значение, что в bot.py
-
-def is_open_all():
-    """Режим «Открыто всё» (включается в админке бота): любые дни, ручные блокировки не действуют."""
-    con = db()
+# График работы (рабочие дни, время начала сеансов, отдых между сеансами) хранится в базе
+# и редактируется в веб-админке; бот читает те же значения через sepa_config, поэтому они совпадают.
+def _open_all(con):
+    """Режим «Открыто всё» (включается в админке): любые дни, ручные блокировки не действуют."""
     try:
         row = con.execute("SELECT value FROM settings WHERE key='open_all'").fetchone()
-    except sqlite3.OperationalError:   # таблицу создаёт бот при запуске
+    except sqlite3.OperationalError:   # таблицу создаёт бот или админка при запуске
         row = None
-    con.close()
     return bool(row and row[0] == "1")
 
 def get_slots(year, month, day, dur_min):
     now = now_t(); key = f"{year}-{month:02d}-{day:02d}"
-    open_all = is_open_all()
-    weekday = datetime(year, month, day).weekday()
-    if weekday not in WORK_DAYS and not open_all:
-        return []
     con = db()
+    cfg = sepa_config.get_schedule(con)
+    open_all = _open_all(con)
+    weekday = datetime(year, month, day).weekday()
+    if weekday not in cfg["work_days"] and not open_all:
+        con.close(); return []
     if not open_all and con.execute("SELECT date FROM schedule WHERE type='day' AND date=?", (key,)).fetchone():
         con.close(); return []
     blocked_slots = set() if open_all else set(r[0] for r in con.execute("SELECT time FROM schedule WHERE type='slot' AND date=?", (key,)).fetchall())
@@ -109,13 +97,13 @@ def get_slots(year, month, day, dur_min):
             con2 = db(); row = con2.execute("SELECT duration_min FROM services WHERE name=?", (bsvc,)).fetchone(); con2.close()
             bdurmin = row[0] if row else 60
         h,m = int(btime.split(":")[0]), int(btime.split(":")[1])
-        booked.append((h*60+m, h*60+m+bdurmin+REST_MINUTES))
+        booked.append((h*60+m, h*60+m+bdurmin+cfg["rest"]))
     def free(start, dur):
-        if start + dur > _CLOSE_MIN: return False
+        if start + dur > cfg["close_min"]: return False
         for bs,be in booked:
             if start < be and start+dur > bs: return False
         return f"{start//60:02d}:{start%60:02d}" not in blocked_slots
-    candidates = list(_SLOT_MIN)
+    candidates = list(cfg["slot_min"])
     if year==now.year and month==now.month and day==now.day:
         candidates = [c for c in candidates if c > now.hour*60+now.minute]
     return [f"{c//60:02d}:{c%60:02d}" for c in sorted(set(c for c in candidates if free(c, dur_min)))]

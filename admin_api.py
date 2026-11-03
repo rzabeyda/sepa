@@ -28,12 +28,14 @@ import subprocess
 import threading
 import time
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from email.message import EmailMessage
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
+import sepa_config
 from admin_seed import SEED
 
 router = APIRouter()
@@ -42,7 +44,6 @@ _ctx = {}
 COOKIE = "skf_admin"
 SESSION_SECONDS = 365 * 24 * 3600    # вход запоминается на год и продлевается при каждом заходе в админку
 TOKEN_SECONDS = 10 * 60              # ссылка для входа — 10 минут
-REST_MINUTES = 30                    # отдых после сеанса (как в боте и на сайте)
 DURATIONS = (60, 90)
 PRICE_90 = 50                        # цена 90 минут одинакова для всех услуг (как в боте и на сайте)
 DEFAULT_IMG = "images/service-default.jpg"
@@ -518,6 +519,7 @@ def _conflicts(con, year, month, day, time_s, dur, exclude_id=None):
     h, mi = map(int, time_s.split(":"))
     start = h * 60 + mi
     defaults = _service_defaults(con)
+    rest = sepa_config.get_schedule(con)["rest"]
     found = []
     for bid, btime, bsvc, bdur, bname in con.execute(
             "SELECT id,time,service,duration_min,name FROM bookings WHERE year=? AND month=? AND day=?", (year, month, day)):
@@ -526,7 +528,7 @@ def _conflicts(con, year, month, day, time_s, dur, exclude_id=None):
         bd = bdur or (defaults.get(bsvc, ("", 60))[1]) or 60
         bh, bm = map(int, btime.split(":"))
         bs = bh * 60 + bm
-        be = bs + bd + REST_MINUTES
+        be = bs + bd + rest
         if start < be and start + dur > bs:
             found.append(f"{btime} — {bname}")
     return found
@@ -1160,3 +1162,213 @@ def gallery_move(gid: int, m: MoveIn, request: Request):
         con.execute("UPDATE gallery SET sort_order=? WHERE id=?", (pos, x))
     con.commit(); con.close()
     return {"ok": True}
+
+
+# ── график работы ────────────────────────────────────────────────────────────
+class ScheduleIn(BaseModel):
+    work_days: list[int] | None = None
+    slots: list[str] | None = None
+    rest: int | None = None
+    open_all: bool | None = None
+
+
+class BlockIn(BaseModel):
+    date: str
+    time: str | None = None
+
+
+def _open_all(con):
+    row = con.execute("SELECT value FROM settings WHERE key='open_all'").fetchone()
+    return bool(row and row[0] == "1")
+
+
+def _blocked(con, today):
+    days = [r[0] for r in con.execute("SELECT DISTINCT date FROM schedule WHERE type='day' AND date>=? ORDER BY date", (today,))]
+    slots = {}
+    for d, t in con.execute("SELECT date,time FROM schedule WHERE type='slot' AND date>=? ORDER BY date,time", (today,)):
+        slots.setdefault(d, set()).add(t)
+    return {"days": days, "slots": {d: sorted(v) for d, v in slots.items()}}
+
+
+@router.get("/api/admin/schedule")
+def get_schedule(request: Request):
+    _auth(request)
+    con = _db()
+    cfg = sepa_config.get_schedule(con)
+    out = {"ok": True, "config": {"work_days": cfg["work_days"], "slots": cfg["slots"], "rest": cfg["rest"]},
+           "open_all": _open_all(con), "blocked": _blocked(con, _ctx["now_t"]().strftime("%Y-%m-%d"))}
+    con.close()
+    return out
+
+
+@router.put("/api/admin/schedule")
+def put_schedule(p: ScheduleIn, request: Request):
+    _auth(request)
+    con = _db()
+    cur = sepa_config.get_schedule(con)
+    new = {"work_days": cur["work_days"], "slots": cur["slots"], "rest": cur["rest"]}
+    if p.work_days is not None:
+        days = sorted({d for d in p.work_days if isinstance(d, int) and 0 <= d <= 6})
+        if not days:
+            con.close(); _err(400, "Выбери хотя бы один рабочий день")
+        new["work_days"] = days
+    if p.slots is not None:
+        slots = sorted({t for t in p.slots if sepa_config.valid_time(t)})
+        if not slots:
+            con.close(); _err(400, "Добавь хотя бы одно время начала сеанса")
+        if len(slots) > sepa_config.SLOTS_MAX:
+            con.close(); _err(400, f"Не больше {sepa_config.SLOTS_MAX} времён")
+        new["slots"] = slots
+    if p.rest is not None:
+        if not 0 <= p.rest <= 180:
+            con.close(); _err(400, "Отдых между сеансами: от 0 до 180 минут")
+        new["rest"] = p.rest
+    sepa_config.save_json(con, "schedule_config", new)
+    if p.open_all is not None:
+        con.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('open_all',?)", ("1" if p.open_all else "0",))
+    con.commit(); con.close()
+    return {"ok": True}
+
+
+def _check_block(b, con):
+    try:
+        d = datetime.strptime(b.date, "%Y-%m-%d")
+    except ValueError:
+        con.close(); _err(400, "Неверная дата")
+    now = _ctx["now_t"]()
+    if d.date() < now.date() or (d - now).days > 800:
+        con.close(); _err(400, "Дата должна быть в будущем, не дальше двух лет")
+    if b.time is not None and b.time not in sepa_config.get_schedule(con)["slots"]:
+        con.close(); _err(400, "Такого времени нет в графике")
+
+
+@router.post("/api/admin/schedule/block")
+def block(b: BlockIn, request: Request):
+    _auth(request)
+    con = _db()
+    _check_block(b, con)
+    if b.time is None:
+        if not con.execute("SELECT 1 FROM schedule WHERE type='day' AND date=?", (b.date,)).fetchone():
+            con.execute("INSERT INTO schedule (type,date,time) VALUES ('day',?,NULL)", (b.date,))
+    elif not con.execute("SELECT 1 FROM schedule WHERE type='slot' AND date=? AND time=?", (b.date, b.time)).fetchone():
+        con.execute("INSERT INTO schedule (type,date,time) VALUES ('slot',?,?)", (b.date, b.time))
+    con.commit(); con.close()
+    return {"ok": True}
+
+
+@router.post("/api/admin/schedule/unblock")
+def unblock(b: BlockIn, request: Request):
+    _auth(request)
+    con = _db()
+    try:
+        datetime.strptime(b.date, "%Y-%m-%d")
+    except ValueError:
+        con.close(); _err(400, "Неверная дата")
+    if b.time is None:
+        con.execute("DELETE FROM schedule WHERE type='day' AND date=?", (b.date,))
+    else:
+        con.execute("DELETE FROM schedule WHERE type='slot' AND date=? AND time=?", (b.date, b.time))
+    con.commit(); con.close()
+    return {"ok": True}
+
+
+# ── содержимое сайта: имя, подписи, контакты, соцсети, фото ───────────────────
+_PHONE_RE = re.compile(r"^[+0-9 ()\-]{5,25}$")
+_TG_RE = re.compile(r"^[A-Za-z0-9_]{4,32}$")
+
+
+def _text(v, limit, field, required=False):
+    t = clean(v, limit)
+    if required and not t:
+        _err(400, f"Поле «{field}» не должно быть пустым")
+    return t
+
+
+def _clean_site(data):
+    """Проверяет присланные поля. Возвращает только то, что разрешено менять, в безопасном виде."""
+    if not isinstance(data, dict):
+        _err(400, "Неверные данные")
+    out = {}
+    names = {"name": "Имя", "grade": "Подпись под именем", "city": "Город", "experience": "Опыт"}
+    for key, title in names.items():
+        if key in data:
+            d = data[key]
+            if not isinstance(d, dict):
+                _err(400, f"Поле «{title}» заполнено неверно")
+            out[key] = {"ru": _text(d.get("ru"), 80, title + " (русский)", True),
+                        "et": _text(d.get("et"), 80, title), "en": _text(d.get("en"), 80, title)}
+    if "company" in data: out["company"] = _text(data["company"], 60, "Компания", True)
+    if "cert" in data: out["cert"] = _text(data["cert"], 30, "Сертификат")
+    if "address" in data: out["address"] = _text(data["address"], 100, "Адрес", True)
+    if "phone" in data:
+        ph = _text(data["phone"], 25, "Телефон", True)
+        if not _PHONE_RE.match(ph):
+            _err(400, "Телефон: только цифры, +, пробелы, скобки и дефис")
+        out["phone"] = ph
+    if "telegram" in data:
+        tg = _text(data["telegram"], 80, "Telegram", True)
+        tg = re.sub(r"^(https?://)?(t\.me/|telegram\.me/)", "", tg).lstrip("@").strip("/")
+        if not _TG_RE.match(tg):
+            _err(400, "Telegram: имя пользователя, например SKF_Massage")
+        out["telegram"] = tg
+    if "socials" in data:
+        if not isinstance(data["socials"], dict):
+            _err(400, "Соцсети заполнены неверно")
+        soc = {}
+        for k in ("stebby", "facebook", "instagram", "tiktok", "youtube"):
+            if k in data["socials"]:
+                u = clean(data["socials"][k], 200)
+                if u:
+                    pu = urlparse(u)
+                    if pu.scheme != "https" or not pu.netloc or re.search(r"[\s\"'`<>]", u):
+                        _err(400, f"Ссылка «{k}» должна начинаться с https://")
+                soc[k] = u
+        out["socials"] = soc
+    return out
+
+
+@router.get("/api/site")
+def public_site():
+    con = _db(); cfg = sepa_config.get_site(con); con.close()
+    return cfg
+
+
+@router.get("/api/admin/site")
+def admin_site(request: Request):
+    _auth(request)
+    con = _db(); cfg = sepa_config.get_site(con); con.close()
+    return {"ok": True, "site": cfg}
+
+
+@router.put("/api/admin/site")
+def put_site(request: Request, data: dict):
+    _auth(request)
+    upd = _clean_site(data)
+    con = _db()
+    cur = sepa_config.get_site(con)
+    for k, v in upd.items():
+        if isinstance(v, dict) and isinstance(cur.get(k), dict):
+            cur[k].update(v)
+        else:
+            cur[k] = v
+    sepa_config.save_json(con, "site_config", cur)
+    con.commit(); con.close()
+    return {"ok": True}
+
+
+@router.post("/api/admin/site/photo")
+def site_photo(p: PhotoIn, request: Request):
+    _auth(request)
+    im = _load_image(p.image, 1600)
+    fname = f"site_{secrets.token_hex(4)}.jpg"
+    im.save(os.path.join(_ctx["base_dir"], "images", fname), "JPEG", quality=88, optimize=True)
+    con = _db()
+    cur = sepa_config.get_site(con)
+    old = cur.get("photo", "")
+    cur["photo"] = f"images/{fname}"
+    sepa_config.save_json(con, "site_config", cur)
+    con.commit(); con.close()
+    if os.path.basename(old).startswith("site_"):   # прежнее загруженное фото удаляем, исходное sergey.jpg не трогаем
+        try: os.remove(os.path.join(_ctx["base_dir"], "images", os.path.basename(old)))
+        except OSError: pass
+    return {"ok": True, "photo": f"images/{fname}"}
